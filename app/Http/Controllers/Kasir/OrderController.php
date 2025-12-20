@@ -11,6 +11,7 @@ use App\Models\CafeTable;
 use App\Models\Category;
 use App\Models\Promotion;
 use App\Models\Payment;
+use App\Models\MenuItem;
 
 use App\Models\LoyaltyPoint;
 use Illuminate\Http\Request;
@@ -208,7 +209,8 @@ class OrderController extends Controller
         });
 
         return redirect()
-            ->route('kasir.orders.index')
+            // ->route('kasir.orders.index')
+            ->route('kasir.orders.show', $order)
             ->with('success', 'Order berhasil dibuat dengan diskon per item.');
     }
 
@@ -225,53 +227,117 @@ class OrderController extends Controller
     /**
      * FORM EDIT – Edit header + customer + cart
      */
+    // public function edit(Order $order)
+    // {
+    //     $this->authorizeOrderForKasir($order);
+
+    //     if ($order->status !== 'open') {
+    //         return redirect()->route('kasir.orders.show', $order)
+    //             ->with('error', 'Order sudah tidak bisa diubah (bukan status OPEN).');
+    //     }
+
+    //     $user = Auth::user();
+
+    //     $tables = CafeTable::where('outlet_id', $user->outlet_id ?? null)
+    //         ->orderBy('name')
+    //         ->get();
+
+    //     $order->load(['customer', 'items.menuItem', 'table', 'promotion']);
+
+    //     $categories = Category::with(['menuItems' => function ($q) {
+    //             $q->where('is_active', 1)->orderBy('name');
+    //         }])
+    //         ->orderBy('name')
+    //         ->get();
+
+    //     $today = now()->toDateString();
+    //     $promotions = Promotion::where('is_active', 1)
+    //         ->whereDate('start_date', '<=', $today)
+    //         ->whereDate('end_date', '>=', $today)
+    //         ->where(function ($q) use ($user) {
+    //             $q->whereNull('outlet_id')
+    //               ->orWhere('outlet_id', $user->outlet_id);
+    //         })
+    //         ->orderBy('name')
+    //         ->get();
+
+    //     $promos = $promotions->map(fn ($p) => [
+    //         'id'         => $p->id,
+    //         'type'       => $p->type,
+    //         'value'      => $p->value,
+    //         'min_amount' => $p->min_amount,
+    //     ])->values();
+
+    //     return view('kasir.orders.edit', compact(
+    //         'order',
+    //         'tables',
+    //         'categories',
+    //         'promotions',
+    //         'promos'
+    //     ));
+    // }
+
+
     public function edit(Order $order)
     {
         $this->authorizeOrderForKasir($order);
 
-        if ($order->status !== 'open') {
-            return redirect()->route('kasir.orders.show', $order)
-                ->with('error', 'Order sudah tidak bisa diubah (bukan status OPEN).');
-        }
+        $order->load([
+            'customer',
+            'items.menuItem',
+            'table',
+            'promotion',
+        ]);
 
-        $user = Auth::user();
+        $outletId = $order->outlet_id ?? Auth::user()->outlet_id;
 
-        $tables = CafeTable::where('outlet_id', $user->outlet_id ?? null)
-            ->orderBy('name')
-            ->get();
-
-        $order->load(['customer', 'items.menuItem', 'table', 'promotion']);
-
-        $categories = Category::with(['menuItems' => function ($q) {
-                $q->where('is_active', 1)->orderBy('name');
+        // Ambil kategori + menu per kategori untuk outlet ini
+        $categories = Category::with(['menuItems' => function ($q) use ($outletId) {
+                $q->where('is_active', true)
+                ->where('outlet_id', $outletId)
+                ->orderBy('name');
             }])
             ->orderBy('name')
             ->get();
 
-        $today = now()->toDateString();
-        $promotions = Promotion::where('is_active', 1)
-            ->whereDate('start_date', '<=', $today)
-            ->whereDate('end_date', '>=', $today)
-            ->where(function ($q) use ($user) {
-                $q->whereNull('outlet_id')
-                  ->orWhere('outlet_id', $user->outlet_id);
-            })
+        // Meja dine-in
+        $tables = CafeTable::where('outlet_id', $outletId)
             ->orderBy('name')
             ->get();
 
-        $promos = $promotions->map(fn ($p) => [
-            'id'         => $p->id,
-            'type'       => $p->type,
-            'value'      => $p->value,
-            'min_amount' => $p->min_amount,
-        ])->values();
+        // Promo aktif
+        $promos = Promotion::where('outlet_id', $outletId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        // Data cart & promo untuk JS (supaya tidak ribet di Blade)
+        $initialCart = $order->items->map(function ($item) {
+            return [
+                'menu_item_id' => (string) $item->menu_item_id,
+                'name'         => $item->menuItem->name ?? 'Menu',
+                'qty'          => (int) $item->qty,
+                'price'        => (float) $item->price,
+            ];
+        })->values()->all();
+
+        $promosData = $promos->map(function ($p) {
+            return [
+                'id'         => $p->id,
+                'name'       => $p->name,
+                'type'       => $p->type,
+                'value'      => $p->value,
+                'min_amount' => $p->min_amount,
+            ];
+        })->values()->all();
 
         return view('kasir.orders.edit', compact(
             'order',
-            'tables',
             'categories',
-            'promotions',
-            'promos'
+            'tables',
+            'promos',
+            'initialCart',
+            'promosData'
         ));
     }
 

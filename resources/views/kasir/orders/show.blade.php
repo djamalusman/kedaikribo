@@ -136,11 +136,13 @@
                 @csrf
                 <div class="col-md-3">
                     <label class="form-label">Metode</label>
-                    <select name="payment_method"  class="form-select" required>
+                    {{-- <select name="payment_method"  class="form-select" required>
                         <option value="cash">Cash</option>
                         <option value="qris">QRIS</option>
                         <option value="transfer">Transfer</option>
-                    </select>
+                    </select> --}}
+                    <input type="text" name="payment_method" class="form-control"
+                        value="cash" disabled>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Jumlah Bayar</label>
