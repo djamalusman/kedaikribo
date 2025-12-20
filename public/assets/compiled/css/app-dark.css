@@ -9252,7 +9252,7 @@ html[data-bs-theme="dark"]
     color: black;
 }
 html[data-bs-theme="dark"]
-    .sidebar-wrapper
+    .sidebar-wrappergit
     .menu
     .sidebar-item.active
     > .sidebar-link
