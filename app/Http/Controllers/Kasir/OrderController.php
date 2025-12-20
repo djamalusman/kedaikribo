@@ -217,7 +217,7 @@ class OrderController extends Controller
     {
         $this->authorizeOrderForKasir($order);
 
-        $order->load(['items.menuItem', 'customer', 'table', 'promotion']);
+        $order->load(['items.menuItem', 'customer', 'table', 'promotion','payments']);
 
         return view('kasir.orders.show', compact('order'));
     }
