@@ -19,6 +19,9 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\CustomerLoyaltyController;
 use App\Http\Controllers\Auth\LoginController;
 
+Route::get('/', [HomeController::class, 'index'])
+    ->middleware('auth');
+
 Route::get('/login', [LoginController::class, 'showLoginForm'])
     ->name('login')
     ->middleware('guest');

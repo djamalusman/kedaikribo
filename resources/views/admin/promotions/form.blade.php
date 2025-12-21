@@ -106,7 +106,7 @@
     </div>
 
     {{-- INI BAGIAN PENTING: PILIH MENU YANG KENA PROMO --}}
-    <div class="col-md-12">
+    {{-- <div class="col-md-12">
         <label class="form-label">Berlaku untuk Menu</label>
         <select name="menu_item_id[]" class="choices form-select multiple-remove" multiple="multiple">
             @php
@@ -123,7 +123,7 @@
         <small class="text-muted">
             Kosongkan kalau promo ini berlaku untuk semua menu.
         </small>
-    </div>
+    </div> --}}
 </div>
 
 <div class="mt-3 d-flex justify-content-between">

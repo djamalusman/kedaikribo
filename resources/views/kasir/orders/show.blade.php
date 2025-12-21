@@ -142,7 +142,7 @@
                         <option value="transfer">Transfer</option>
                     </select> --}}
                     <input type="text" name="payment_method" class="form-control"
-                        value="cash" disabled>
+                        value="cash" readonly>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Jumlah Bayar</label>
