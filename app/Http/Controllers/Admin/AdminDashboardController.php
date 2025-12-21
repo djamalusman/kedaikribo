@@ -223,4 +223,58 @@ foreach ($months as $monthNum => $monthName) {
     ));
 }
 
+   public function items(Order $order)
+    {
+        // Pastikan hanya order paid
+        // if ($order->status !== 'paid') {
+        //     return response()->json([
+        //         'message' => 'Order belum paid'
+        //     ], 400);
+        // }
+
+        $items = DB::table('menu_items')
+            ->join('order_items', 'order_items.menu_item_id', '=', 'menu_items.id')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->leftJoin('promotions','promotions.id','=','orders.promotion_id')
+            ->select(
+                'menu_items.name',
+                DB::raw('SUM(order_items.qty) as qty'),
+                DB::raw('SUM(order_items.qty * order_items.price) as subtotal')
+            )
+            ->where('orders.id', $order->id)
+            ->where('orders.outlet_id', $order->outlet_id)
+            ->groupBy('menu_items.name')
+            ->get();
+
+        // ambil promo sekali saja
+        
+        $promotype    = $order->promotion->type ?? null;
+        $totalBeforePromo = $items->sum('subtotal');
+        $promoPercent = (float) str_replace(',', '.', $order->promotion->value);
+
+        $grandTotal;
+        if ($promotype =="percent") {
+            $discount = ($promoPercent / 100) * $totalBeforePromo;
+            $grandTotal = max(0, $totalBeforePromo - $discount);
+        }
+        else if($promotype =="nominal")
+        {
+            $grandTotal = max(0, $totalBeforePromo - $promoPercent);
+        }
+        
+        $totalreal = $items->sum('subtotal');
+        
+
+        return response()->json([
+            'order_code'        => $order->order_code,
+            'items'             => $items,
+            'total_before_promo'=> $totalBeforePromo,
+            'promotype'          => $promotype,
+            'grand_total'       => $grandTotal,
+            'promoPercent'       => $promoPercent,
+            'totalreal'       => $totalreal
+        ]);
+    }
+
+
 }

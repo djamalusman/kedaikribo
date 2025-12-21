@@ -119,15 +119,11 @@ LEFT CONTENT
                                         {{ rupiah($order->grand_total) }}
                                     </td>
                                     <td class="text-end">
-                                        <button
-                                            type="button"
-                                            class="btn btn-outline-primary btn-view-order"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#default"
-                                            data-order='@json($order)'>
+                                        <button type="button" class="btn btn-outline-primary btn-view-order"
+                                            data-bs-toggle="modal" data-bs-target="#default"
+                                            data-url="{{ route('admin.dashboard.items', $order->id) }}">
                                             View List
                                         </button>
-
                                     </td>
                                 </tr>
                             @empty
@@ -143,24 +139,21 @@ LEFT CONTENT
             </div>
 
         </div>
-        <div class="modal fade text-left" id="default" tabindex="-1" role="dialog" aria-labelledby="myModalLabel1"
-            aria-hidden="true">
-            <div class="modal-dialog modal-dialog-scrollable" role="document">
+        <div class="modal fade text-left" id="default" tabindex="-1">
+            <div class="modal-dialog modal-dialog-scrollable modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="myModalLabel1"></h5>
-                        <button type="button" class="close rounded-pill" data-bs-dismiss="modal" aria-label="Close">
+                        <h5 class="modal-title"></h5>
+                        <button type="button" class="close rounded-pill" data-bs-dismiss="modal">
                             <i data-feather="x"></i>
                         </button>
                     </div>
-                    <div class="modal-body">
-                    </div>
-                    <div class="modal-footer">
-                        
-                    </div>
+                    <div class="modal-body"></div>
+                    <div class="modal-footer"></div>
                 </div>
             </div>
         </div>
+
         {{-- =======================
 RIGHT SIDEBAR
 ======================= --}}
@@ -377,50 +370,279 @@ RIGHT SIDEBAR
         });
     </script>
 
+    {{-- <script>
+        document.addEventListener('DOMContentLoaded', function() {
+
+            const modal = document.getElementById('default');
+            const modalBody = modal.querySelector('.modal-body');
+            const modalTitle = modal.querySelector('.modal-title');
+            const modalFooter = modal.querySelector('.modal-footer');
+
+            document.querySelectorAll('.btn-view-order').forEach(btn => {
+                btn.addEventListener('click', async function() {
+
+                    // 🔥 URL LANGSUNG DARI ROUTE LARAVEL
+                    const url = this.dataset.url;
+
+                    modalTitle.innerText = 'Loading...';
+                    modalBody.innerHTML = `
+                <p class="text-center text-muted">
+                    Memuat detail transaksi...
+                </p>
+            `;
+                    modalFooter.innerHTML = '';
+
+                    try {
+                        const res = await fetch(url, {
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (!res.ok) {
+                            throw new Error('HTTP ' + res.status);
+                        }
+
+                        const data = await res.json();
+
+                        modalTitle.innerText = `Order #${data.order_code}`;
+
+                        let html = `
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Menu</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                        data.items.forEach(item => {
+                            html += `
+                        <tr>
+                            <td>${item.name}</td>
+                            <td class="text-center">${item.qty}</td>
+                            <td class="text-end">
+                                Rp ${Number(item.subtotal).toLocaleString('id-ID')}
+                            </td>
+                        </tr>
+                    `;
+                        });
+
+                        let promoHtml = '';
+
+                        if (promotype === 'percent') {
+                            promoHtml = `
+                                <div class="text-danger">
+                                    - ${Number(data.discount).toLocaleString('id-ID')}%
+                                </div>
+                                <div>─────────</div>
+                                <div class="fw-bold">
+                                    Rp ${Number(data.grand_total).toLocaleString('id-ID')}
+                                </div>
+                            `;
+                        } else if (promotype === 'nominal') {
+                            promoHtml = `
+                                <div class="text-danger">
+                                    - Rp ${Number(data.discount).toLocaleString('id-ID')}
+                                </div>
+                                <div>─────────</div>
+                                <div class="fw-bold">
+                                    Rp ${Number(data.grand_total).toLocaleString('id-ID')}
+                                </div>
+                            `;
+                        }
+
+
+                        html += `
+                        </tbody>
+                        <tfoot>
+                           <tr>
+                                <th colspan="2" class="text-end align-top">Grand Total</th>
+                                <th class="text-end">
+                                    <div>Rp ${Number(data.totalreal).toLocaleString('id-ID')}</div>
+                                    ${promoHtml}
+                                </th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
+
+                        modalBody.innerHTML = html;
+
+                        modalFooter.innerHTML = `
+                    <button type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                        Tutup
+                    </button>
+                `;
+
+                    } catch (err) {
+                        console.error('FETCH ERROR:', err);
+                        modalTitle.innerText = 'Error';
+                        modalBody.innerHTML = `
+                    <p class="text-danger text-center">
+                        Gagal memuat detail transaksi
+                    </p>
+                `;
+                    }
+                });
+            });
+
+        });
+    </script> --}}
+
     <script>
 document.addEventListener('DOMContentLoaded', function () {
+
     const modal = document.getElementById('default');
     const modalBody = modal.querySelector('.modal-body');
     const modalTitle = modal.querySelector('.modal-title');
+    const modalFooter = modal.querySelector('.modal-footer');
 
     document.querySelectorAll('.btn-view-order').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const order = JSON.parse(this.dataset.order);
+        btn.addEventListener('click', async function () {
 
-            modalTitle.innerText = 'Order #' + order.order_code;
+            const url = this.dataset.url;
 
-            let html = `
-                <table class="table table-sm">
-                    <thead>
-                        <tr>
-                            <th>Menu</th>
-                            <th class="text-center">Qty</th>
-                            <th class="text-end">Harga</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            modalTitle.innerText = 'Loading...';
+            modalBody.innerHTML = `
+                <p class="text-center text-muted">
+                    Memuat detail transaksi...
+                </p>
             `;
+            modalFooter.innerHTML = '';
 
-            order.items.forEach(item => {
-                html += `
-                    <tr>
-                        <td>${item.menu_item?.name ?? '-'}</td>
-                        <td class="text-center">${item.qty}</td>
-                       <td class="text-end">
-                            Rp ${Number(item.price).toLocaleString('id-ID')}
-                        </td>
-                    </tr>
+            try {
+                const res = await fetch(url, {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!res.ok) {
+                    throw new Error('HTTP ' + res.status);
+                }
+
+                const data = await res.json();
+
+                modalTitle.innerText = `Order #${data.order_code}`;
+
+                // =============================
+                // TABLE HEADER
+                // =============================
+                let html = `
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Menu</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                 `;
-            });
 
-            html += `
-                    </tbody>
-                </table>
-            `;
+                // =============================
+                // ITEMS
+                // =============================
+                data.items.forEach(item => {
+                    html += `
+                        <tr>
+                            <td>${item.name}</td>
+                            <td class="text-center">${item.qty}</td>
+                            <td class="text-end">
+                                Rp ${Number(item.subtotal).toLocaleString('id-ID')}
+                            </td>
+                        </tr>
+                    `;
+                });
+                console.log('DATA API:', data);
 
-            modalBody.innerHTML = html;
+                // =============================
+                // PROMO DISPLAY
+                // =============================
+                let promoHtml = '';
+
+                if (data.promotype === 'percent') {
+                    promoHtml = `
+                        <div class="fw-bold">
+                            Rp ${Number(data.totalreal).toLocaleString('id-ID')}
+                        </div>
+                        <div class="text-danger">
+                            - ${Number(data.promoPercent).toLocaleString('id-ID')}%
+                        </div>
+                        <div>─────────</div>
+                        <div class="fw-bold">
+                            Rp ${Number(data.grand_total).toLocaleString('id-ID')}
+                        </div>
+                    `;
+                }
+                else if (data.promotype === 'nominal') {
+                    promoHtml = `
+                         <div class="fw-bold">
+                            Rp ${Number(data.totalreal).toLocaleString('id-ID')}
+                        </div>
+                        <div class="text-danger">
+                            - Rp ${Number(data.promoPercent).toLocaleString('id-ID')}
+                        </div>
+                        <div>─────────</div>
+                        <div class="fw-bold">
+                            Rp ${Number(data.grand_total).toLocaleString('id-ID')}
+                        </div>
+                    `;
+                }
+                else {
+                    // tanpa promo
+                    promoHtml = `
+                        <div class="fw-bold">
+                            Rp ${Number(data.totalreal).toLocaleString('id-ID')}
+                        </div>
+                    `;
+                }
+
+                // =============================
+                // FOOTER TOTAL
+                // =============================
+                html += `
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="2" class="text-start align-top">
+                                    Grand Total
+                                </th>
+
+                                <th class="text-end">
+                                    ${promoHtml}
+                                </th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
+
+                modalBody.innerHTML = html;
+
+                modalFooter.innerHTML = `
+                    <button type="button"
+                        class="btn btn-secondary"
+                        data-bs-dismiss="modal">
+                        Tutup
+                    </button>
+                `;
+
+            } catch (err) {
+                console.error(err);
+                modalTitle.innerText = 'Error';
+                modalBody.innerHTML = `
+                    <p class="text-danger text-center">
+                        Gagal memuat detail transaksi
+                    </p>
+                `;
+            }
         });
     });
+
 });
 </script>
 

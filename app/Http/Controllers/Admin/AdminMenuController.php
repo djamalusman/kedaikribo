@@ -183,4 +183,7 @@ class AdminMenuController extends Controller
         return $prefix . str_pad($next, 2, '0', STR_PAD_LEFT); // MNM01, MNM02, ...
     }
 
+
+    
+
 }

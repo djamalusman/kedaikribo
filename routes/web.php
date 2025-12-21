@@ -69,6 +69,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/dashboard', [AdminDashboardController::class, 'index'])
                 ->name('dashboard');
 
+            Route::get('/dashboard/{order}/items', [AdminDashboardController::class, 'items'])
+            ->name('dashboard.items');
+
+
             // MENU (sudah ada)
             Route::resource('menu', AdminMenuController::class);
             Route::get('menu/next-code', [AdminMenuController::class, 'nextCode'])
@@ -107,6 +111,9 @@ Route::middleware('auth')->group(function () {
       
         Route::get('kasir/dashboard', [KasirDashboardController::class, 'index'])
             ->name('kasir.dashboard');
+
+        Route::get('kasir/dashboard/{order}/items', [AdminDashboardController::class, 'items'])
+            ->name('kasir.dashboard.items');
 
         // POS / Order
         Route::resource('kasir/orders', OrderController::class)
