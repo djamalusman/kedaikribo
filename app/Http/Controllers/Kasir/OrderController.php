@@ -224,58 +224,6 @@ class OrderController extends Controller
         return view('kasir.orders.show', compact('order'));
     }
 
-    /**
-     * FORM EDIT – Edit header + customer + cart
-     */
-    // public function edit(Order $order)
-    // {
-    //     $this->authorizeOrderForKasir($order);
-
-    //     if ($order->status !== 'open') {
-    //         return redirect()->route('kasir.orders.show', $order)
-    //             ->with('error', 'Order sudah tidak bisa diubah (bukan status OPEN).');
-    //     }
-
-    //     $user = Auth::user();
-
-    //     $tables = CafeTable::where('outlet_id', $user->outlet_id ?? null)
-    //         ->orderBy('name')
-    //         ->get();
-
-    //     $order->load(['customer', 'items.menuItem', 'table', 'promotion']);
-
-    //     $categories = Category::with(['menuItems' => function ($q) {
-    //             $q->where('is_active', 1)->orderBy('name');
-    //         }])
-    //         ->orderBy('name')
-    //         ->get();
-
-    //     $today = now()->toDateString();
-    //     $promotions = Promotion::where('is_active', 1)
-    //         ->whereDate('start_date', '<=', $today)
-    //         ->whereDate('end_date', '>=', $today)
-    //         ->where(function ($q) use ($user) {
-    //             $q->whereNull('outlet_id')
-    //               ->orWhere('outlet_id', $user->outlet_id);
-    //         })
-    //         ->orderBy('name')
-    //         ->get();
-
-    //     $promos = $promotions->map(fn ($p) => [
-    //         'id'         => $p->id,
-    //         'type'       => $p->type,
-    //         'value'      => $p->value,
-    //         'min_amount' => $p->min_amount,
-    //     ])->values();
-
-    //     return view('kasir.orders.edit', compact(
-    //         'order',
-    //         'tables',
-    //         'categories',
-    //         'promotions',
-    //         'promos'
-    //     ));
-    // }
 
 
     public function edit(Order $order)
@@ -551,9 +499,9 @@ class OrderController extends Controller
     protected function authorizeOrderForKasir(Order $order): void
     {
         $user = Auth::user();
-        if ($order->cashier_id !== $user->id) {
-            abort(403, 'Tidak boleh mengakses order kasir lain.');
-        }
+        // if ($order->cashier_id !== $user->id) {
+        //     abort(403, 'Tidak boleh mengakses order kasir lain.');
+        // }
     }
 
 
