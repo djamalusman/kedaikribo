@@ -61,16 +61,18 @@ class AdminMenuController extends Controller
                 $file = $request->file('image');
                 $filename = uniqid().'_'.$file->getClientOriginalName();
 
-                $publicDir = public_path('storage/menu');
-                if (!is_dir($publicDir)) {
-                    mkdir($publicDir, 0755, true);
+                $targetDir = base_path('../public_html/storage/menu');
+
+                if (!is_dir($targetDir)) {
+                    mkdir($targetDir, 0755, true);
                 }
 
-                // SIMPAN LANGSUNG KE PUBLIC
-                $file->move($publicDir, $filename);
+                // SIMPAN LANGSUNG KE public_html
+                $file->move($targetDir, $filename);
 
                 $data['image'] = $filename;
             }
+
 
             MenuItem::create($data);
 
@@ -117,27 +119,28 @@ class AdminMenuController extends Controller
 
             if ($request->hasFile('image')) {
 
-                // 🧹 Hapus image lama di public_html
+                // hapus image lama
                 if (!empty($menu->image)) {
-                    $old = public_path('storage/menu/'.$menu->image);
+                    $old = base_path('../public_html/storage/menu/'.$menu->image);
                     if (file_exists($old)) {
                         @unlink($old);
                     }
                 }
 
-                // 📤 Upload image baru
                 $file = $request->file('image');
                 $filename = uniqid().'_'.$file->getClientOriginalName();
 
-                $publicDir = public_path('storage/menu');
-                if (!is_dir($publicDir)) {
-                    mkdir($publicDir, 0755, true);
+                $targetDir = base_path('../public_html/storage/menu');
+
+                if (!is_dir($targetDir)) {
+                    mkdir($targetDir, 0755, true);
                 }
 
-                $file->move($publicDir, $filename);
+                $file->move($targetDir, $filename);
 
                 $data['image'] = $filename;
             }
+
 
             $menu->update($data);
 
