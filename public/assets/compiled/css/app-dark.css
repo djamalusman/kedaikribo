@@ -1905,7 +1905,7 @@ html[data-bs-theme="dark"] .blockquote-footer:before {
 }
 html[data-bs-theme="dark"] .img-fluid {
     max-width: 100%;
-    height: auto;
+    /* height: auto; */
 }
 html[data-bs-theme="dark"] .img-thumbnail {
     padding: 0.25rem;
