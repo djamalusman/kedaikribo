@@ -55,11 +55,20 @@ class AdminMenuController extends Controller
                 $data['code'] = $this->generateMenuCode($data['category_id']);
             }
 
-            // 🔽 Upload image
+            // 📤 Upload image → public_html/storage/menu
             if ($request->hasFile('image')) {
+
                 $file = $request->file('image');
                 $filename = uniqid().'_'.$file->getClientOriginalName();
-                $file->storeAs('menu', $filename, 'public');
+
+                $publicDir = public_path('storage/menu');
+                if (!is_dir($publicDir)) {
+                    mkdir($publicDir, 0755, true);
+                }
+
+                // SIMPAN LANGSUNG KE PUBLIC
+                $file->move($publicDir, $filename);
+
                 $data['image'] = $filename;
             }
 
@@ -76,12 +85,12 @@ class AdminMenuController extends Controller
 
             Log::error('Gagal membuat Menu', [
                 'message' => $e->getMessage(),
-                'input'   => $request->except(['_token']),
             ]);
 
             return back()->with('error', 'Gagal membuat data.');
         }
     }
+
 
     public function edit(MenuItem $menu)
     {
@@ -106,17 +115,27 @@ class AdminMenuController extends Controller
 
             $data['is_active'] = $request->boolean('is_active');
 
-            // 🔽 Jika upload image baru
             if ($request->hasFile('image')) {
 
-                // hapus image lama
-                if ($menu->image && Storage::disk('public')->exists('menu/'.$menu->image)) {
-                    Storage::disk('public')->delete('menu/'.$menu->image);
+                // 🧹 Hapus image lama di public_html
+                if (!empty($menu->image)) {
+                    $old = public_path('storage/menu/'.$menu->image);
+                    if (file_exists($old)) {
+                        @unlink($old);
+                    }
                 }
 
+                // 📤 Upload image baru
                 $file = $request->file('image');
                 $filename = uniqid().'_'.$file->getClientOriginalName();
-                $file->storeAs('menu', $filename, 'public');
+
+                $publicDir = public_path('storage/menu');
+                if (!is_dir($publicDir)) {
+                    mkdir($publicDir, 0755, true);
+                }
+
+                $file->move($publicDir, $filename);
+
                 $data['image'] = $filename;
             }
 
@@ -134,7 +153,6 @@ class AdminMenuController extends Controller
             Log::error('Gagal update menu', [
                 'menu_id' => $menu->id,
                 'message' => $e->getMessage(),
-                'input'   => $request->except(['_token']),
             ]);
 
             return back()
@@ -142,6 +160,7 @@ class AdminMenuController extends Controller
                 ->withInput();
         }
     }
+
 
 
     public function destroy(MenuItem $menu)
