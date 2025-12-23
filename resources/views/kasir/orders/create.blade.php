@@ -61,7 +61,7 @@
                             <select name="table_id" class="form-select">
                                 <option value="">Pilih Meja</option>
                                 @foreach ($tables as $t)
-                                    <option value="{{ $t->id }}" {{ old('table_id') == $t->id ? 'selected' : '' }}>
+                                    <option value="{{ $t->id }}-{{ $t->status }}" {{ old('table_id') == $t->id ? 'selected' : '' }}>
                                         {{ $t->name }} ({{ $t->status }})
                                     </option>
                                 @endforeach
@@ -304,6 +304,11 @@
                     const orderTypeSelect = document.getElementById('order_type');
                     const tableWrapper = document.getElementById('table-wrapper');
 
+                    // validasi meja
+                    const tableSelect = document.getElementById('table_id');
+                    const selectedOption = tableSelect.options[tableSelect.selectedIndex];
+                    
+
                     function toggleTable() {
                         if (orderTypeSelect.value === 'dine_in') {
                             tableWrapper.style.display = '';
@@ -315,10 +320,18 @@
                     toggleTable();
 
                     document.getElementById('pos-form').addEventListener('submit', function(e) {
-                        if (cart.length === 0) {
+                        if (selectedOption && selectedOption.dataset.status === 'reserved') {
+                            e.preventDefault();
+                            alert('Meja yang dipilih sedang reserved.');
+                            return false;
+                        }
+                        else if (cart.length === 0) {
                             e.preventDefault();
                             alert('Keranjang masih kosong.');
                             return;
+                        }
+                        else {
+                            tableWrapper.style.display = 'none';
                         }
 
                         document.querySelectorAll('.cart-hidden-input').forEach(el => el.remove());

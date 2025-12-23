@@ -121,29 +121,212 @@ class OrderController extends Controller
     /**
      * SIMPAN ORDER BARU (Create)
      */
+    // public function store(Request $request)
+    // {
+    //     $tableData = $request->table_id; // contoh: "5-reserved"
+
+    //     if ($tableData) {
+    //         [$tableId, $tableStatus] = explode('-', $tableData);
+    //     } else {
+    //         $tableId = null;
+    //         $tableStatus = null;
+    //     }
+    //     $user = Auth::user();
+
+    //     $data = $request->validate([
+    //         'order_type'   => 'required|in:dine_in,take_away,delivery',
+    //         'table_id'     => 'nullable|exists:cafe_tables,id',
+
+    //         'customer_name'  => 'nullable|string|max:150',
+    //         'customer_phone' => 'nullable|string|max:50',
+    //         'customer_email' => 'nullable|email|max:150',
+        
+    //         'cart'                => 'required|array|min:1',
+    //         'cart.*.menu_item_id' => 'required|exists:menu_items,id',
+    //         'cart.*.name'         => 'required|string',
+    //         'cart.*.qty'          => 'required|integer|min:1',
+    //         'cart.*.price'        => 'required|numeric|min:0',
+
+    //         'promotion_id'        => 'nullable|exists:promotions,id',
+    //     ]);
+
+    //     // 1. Customer (INSERT baru, supaya pasti ada)
+    //     $customerId = null;
+    //     if (
+    //         !empty($data['customer_name']) ||
+    //         !empty($data['customer_phone']) ||
+    //         !empty($data['customer_email'])
+    //     ) {
+    //         $customer = Customer::create([
+    //             'name'  => $data['customer_name'] ?: 'Customer',
+    //             'phone' => $data['customer_phone'] ?: null,
+    //             'email' => $data['customer_email'] ?: null,
+    //         ]);
+    //         $customerId = $customer->id;
+    //     }
+
+    //     // 2. Ambil promo (kalau ada)
+    //     $promo = !empty($data['promotion_id'])
+    //         ? Promotion::find($data['promotion_id'])
+    //         : null;
+
+    //     // 3. Hitung subtotal, diskon, dan items (dengan discount per item)
+    //     $calc = $this->calculateItemsWithDiscount($data['cart'], $promo);
+
+    //     DB::transaction(function () use ($user, $data, $customerId, $promo, $calc, &$order) {
+
+    //         // 4. Insert order (header)
+    //         $order = Order::create([
+    //             'order_code'       => 'ORD-' . now()->format('Ymd-His'),
+    //             'outlet_id'        => $user->outlet_id,
+    //             'table_id'         => $data['order_type'] === 'dine_in' ? $data['table_id'] : null,
+    //             'customer_id'      => $customerId,
+    //             'promotion_id'     => $promo?->id,
+    //             'cashier_id'       => $user->id,
+    //             'order_type'       => $data['order_type'],
+    //             'order_date'       => now(),
+    //             'status'           => 'open',
+    //             'subtotal'         => $calc['subtotal'],
+    //             'discount_total'   => $calc['discount_total'],
+    //             'grand_total'      => $calc['grand_total'],
+    //             'payment_status'   => 'unpaid',
+                
+               
+    //         ]);
+
+    //         // 5. Insert detail ke order_items (diskon sudah dihitung)
+    //         $itemsData = [];
+    //         foreach ($calc['items'] as $itemRow) {
+    //             $itemsData[] = array_merge($itemRow, [
+    //                 'order_id'   => $order->id,
+    //                 'created_at' => now(),
+    //                 'updated_at' => now(),
+    //             ]);
+    //         }
+    //         // boleh pakai insert() atau createMany()
+    //         $order->items()->insert($itemsData);
+
+    //         // 6. Update status meja kalau dine-in
+    //         if ($order->order_type === 'dine_in' && $order->table_id) {
+    //             $table = CafeTable::find($order->table_id);
+    //             if ($table) {
+    //                 $table->status = 'occupied';
+    //                 $table->save();
+    //             }
+    //         }
+    //     });
+
+    //     return redirect()
+    //         // ->route('kasir.orders.index')
+    //         ->route('kasir.orders.show', $order)
+    //         ->with('success', 'Order berhasil dibuat dengan diskon per item.');
+    // }
+
     public function store(Request $request)
     {
+        /**
+         * ==========================================================
+         * 1️⃣ AUTH USER
+         * ==========================================================
+         */
         $user = Auth::user();
 
-        $data = $request->validate([
+        /**
+         * ==========================================================
+         * 2️⃣ PARSE table_id (support: "5" atau "5-reserved")
+         * ==========================================================
+         */
+        $tableData = $request->table_id; // contoh: "5-reserved"
+
+        $tableId = null;
+        $tableStatus = null;
+
+        if ($tableData && str_contains($tableData, '-')) {
+            [$tableId, $tableStatus] = explode('-', $tableData, 2);
+        } elseif ($tableData) {
+            $tableId = $tableData;
+        }
+
+        /**
+         * ==========================================================
+         * 3️⃣ BUILD VALIDATION RULES (DINAMIS)
+         * ==========================================================
+         */
+        $rules = [
             'order_type'   => 'required|in:dine_in,take_away,delivery',
-            'table_id'     => 'nullable|exists:cafe_tables,id',
+            'table_id'     => 'nullable',
 
             'customer_name'  => 'nullable|string|max:150',
             'customer_phone' => 'nullable|string|max:50',
             'customer_email' => 'nullable|email|max:150',
 
-            'cart'                => 'required|array|min:1',
-            'cart.*.menu_item_id' => 'required|exists:menu_items,id',
-            'cart.*.name'         => 'required|string',
-            'cart.*.qty'          => 'required|integer|min:1',
-            'cart.*.price'        => 'required|numeric|min:0',
+            'promotion_id'   => 'nullable|exists:promotions,id',
+        ];
 
-            'promotion_id'        => 'nullable|exists:promotions,id',
-        ]);
+        /**
+         * 👉 IF VALIDASI CART
+         * Cart WAJIB jika meja BUKAN reserved
+         */
+        if ($tableStatus !== 'reserved') {
+            $rules = array_merge($rules, [
+                'cart'                => 'required|array|min:1',
+                'cart.*.menu_item_id' => 'required|exists:menu_items,id',
+                'cart.*.name'         => 'required|string',
+                'cart.*.qty'          => 'required|integer|min:1',
+                'cart.*.price'        => 'required|numeric|min:0',
+            ]);
+        }
 
-        // 1. Customer (INSERT baru, supaya pasti ada)
+        /**
+         * ==========================================================
+         * 4️⃣ VALIDATE REQUEST
+         * ==========================================================
+         */
+        $data = $request->validate($rules);
+
+        /**
+         * ==========================================================
+         * 5️⃣ VALIDASI MEJA KE DATABASE (ANTI MANIPULASI)
+         * ==========================================================
+         */
+        $table = null;
+
+        if ($data['order_type'] === 'dine_in') {
+
+            if (!$tableId) {
+                return back()->withErrors([
+                    'table_id' => 'Meja wajib dipilih untuk Dine In.'
+                ]);
+            }
+
+            $table = CafeTable::lockForUpdate()->find($tableId);
+
+            if (!$table) {
+                return back()->withErrors([
+                    'table_id' => 'Meja tidak ditemukan.'
+                ]);
+            }
+
+            // if ($table->status === 'reserved') {
+            //     return back()->withErrors([
+            //         'table_id' => 'Meja sedang reserved.'
+            //     ]);
+            // }
+
+            if ($table->status === 'occupied') {
+                return back()->withErrors([
+                    'table_id' => 'Meja sedang digunakan.'
+                ]);
+            }
+        }
+
+        /**
+         * ==========================================================
+         * 6️⃣ CUSTOMER (INSERT BARU JIKA ADA DATA)
+         * ==========================================================
+         */
         $customerId = null;
+
         if (
             !empty($data['customer_name']) ||
             !empty($data['customer_phone']) ||
@@ -154,65 +337,92 @@ class OrderController extends Controller
                 'phone' => $data['customer_phone'] ?: null,
                 'email' => $data['customer_email'] ?: null,
             ]);
+
             $customerId = $customer->id;
         }
 
-        // 2. Ambil promo (kalau ada)
+        /**
+         * ==========================================================
+         * 7️⃣ PROMOTION (OPTIONAL)
+         * ==========================================================
+         */
         $promo = !empty($data['promotion_id'])
             ? Promotion::find($data['promotion_id'])
             : null;
 
-        // 3. Hitung subtotal, diskon, dan items (dengan discount per item)
-        $calc = $this->calculateItemsWithDiscount($data['cart'], $promo);
+        /**
+         * ==========================================================
+         * 8️⃣ HITUNG CART + DISKON
+         * ==========================================================
+         */
+        $calc = $this->calculateItemsWithDiscount(
+            $data['cart'] ?? [],
+            $promo
+        );
 
-        DB::transaction(function () use ($user, $data, $customerId, $promo, $calc, &$order) {
+        /**
+         * ==========================================================
+         * 9️⃣ DATABASE TRANSACTION
+         * ==========================================================
+         */
+        DB::transaction(function () use (
+            $user,
+            $data,
+            $customerId,
+            $promo,
+            $calc,
+            $table,
+            &$order
+        ) {
 
-            // 4. Insert order (header)
+            // 9.1 INSERT ORDER
             $order = Order::create([
-                'order_code'       => 'ORD-' . now()->format('Ymd-His'),
-                'outlet_id'        => $user->outlet_id,
-                'table_id'         => $data['order_type'] === 'dine_in' ? $data['table_id'] : null,
-                'customer_id'      => $customerId,
-                'promotion_id'     => $promo?->id,
-                'cashier_id'       => $user->id,
-                'order_type'       => $data['order_type'],
-                'order_date'       => now(),
-                'status'           => 'open',
-                'subtotal'         => $calc['subtotal'],
-                'discount_total'   => $calc['discount_total'],
-                'grand_total'      => $calc['grand_total'],
-                'payment_status'   => 'unpaid',
-                
-               
+                'order_code'     => 'ORD-' . now()->format('Ymd-His'),
+                'outlet_id'      => $user->outlet_id,
+                'table_id'       => $data['order_type'] === 'dine_in' ? $table->id : null,
+                'customer_id'    => $customerId,
+                'promotion_id'   => $promo?->id,
+                'cashier_id'     => $user->id,
+                'order_type'     => $data['order_type'],
+                'order_date'     => now(),
+                'status'         => 'open',
+                'subtotal'       => $calc['subtotal'],
+                'discount_total' => $calc['discount_total'],
+                'grand_total'    => $calc['grand_total'],
+                'payment_status' => 'unpaid',
             ]);
 
-            // 5. Insert detail ke order_items (diskon sudah dihitung)
+            // 9.2 INSERT ORDER ITEMS
             $itemsData = [];
-            foreach ($calc['items'] as $itemRow) {
-                $itemsData[] = array_merge($itemRow, [
+
+            foreach ($calc['items'] as $item) {
+                $itemsData[] = array_merge($item, [
                     'order_id'   => $order->id,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
             }
-            // boleh pakai insert() atau createMany()
+
             $order->items()->insert($itemsData);
 
-            // 6. Update status meja kalau dine-in
-            if ($order->order_type === 'dine_in' && $order->table_id) {
-                $table = CafeTable::find($order->table_id);
-                if ($table) {
-                    $table->status = 'occupied';
-                    $table->save();
-                }
+            // 9.3 UPDATE STATUS MEJA
+            if ($order->order_type === 'dine_in' && $table) {
+                $table->update([
+                    'status' => 'occupied'
+                ]);
             }
         });
 
+        /**
+         * ==========================================================
+         * 🔟 REDIRECT
+         * ==========================================================
+         */
         return redirect()
-            // ->route('kasir.orders.index')
             ->route('kasir.orders.show', $order)
-            ->with('success', 'Order berhasil dibuat dengan diskon per item.');
+            ->with('success', 'Order berhasil dibuat.');
     }
+
 
 
     public function show(Order $order)
