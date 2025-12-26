@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Stok IN / OUT')
+@section('title', 'Stok IN')
 @push('styles')
     <link rel="stylesheet" href="{{ asset('assets/extensions/simple-datatables/style.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/compiled/css/table-datatable.css') }}">
@@ -56,6 +56,12 @@
             <button class="btn btn-secondary me-2" type="submit">Filter</button>
             <a href="{{ route('admin.stock-movements.index') }}" class="btn btn-light">Reset</a>
         </div>
+
+        'qty'           => 'required|numeric|min:0.001',
+            'purchase_price'=> 'required|numeric|min:0.001',
+            'satuan'=> 'nullable|string|max:50',
+            'created_at' => 'required|date',
+            'description'   => 'nullable|string',
     </form> --}}
     <section class="section">
         <div class="card">
@@ -70,10 +76,11 @@
                         <tr>
                             <th>Tanggal</th>
                             <th>Outlet</th>
-                            <th>Bahan</th>
                             <th>Jenis</th>
+                            <th>Nama Stock</th>
+                            <th>Harga Beli</th>
+                            <th>satuan</th>
                             <th>Qty</th>
-                            <th>Ref</th>
                             <th>Deskripsi</th>
                             <th>Aksi</th>
                         </tr>
@@ -83,7 +90,6 @@
                             <tr>
                                 <td>{{ $mv->created_at->format('d/m/Y H:i') }}</td>
                                 <td>{{ $mv->outlet->name ?? '-' }}</td>
-                                <td>{{ $mv->ingredient->name ?? '-' }}</td>
                                 <td>
                                     @if ($mv->movement_type === 'in')
                                         <span class="badge bg-success">IN</span>
@@ -91,14 +97,10 @@
                                         <span class="badge bg-danger">OUT</span>
                                     @endif
                                 </td>
+                                 <td>{{ $mv->namestock }}</td>
+                                <td>{{ rupiah($mv->purchase_price) }}</td>
+                                 <td>{{ $mv->satuan ?? '-' }}</td>
                                 <td>{{ number_format($mv->qty, 1, ',', '.') }}</td>
-                                <td>
-                                    @if ($mv->reference_type || $mv->reference_no)
-                                        <small class="text-muted">
-                                            {{ $mv->reference_type }} {{ $mv->reference_no }}
-                                        </small>
-                                    @endif
-                                </td>
                                 <td>{{ Str::limit($mv->description, 60) }}</td>
                                 <td>
                                     <a href="{{ route('admin.stock-movements.edit', $mv) }}"

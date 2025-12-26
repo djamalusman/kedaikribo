@@ -1,7 +1,10 @@
 @extends('layouts.app')
 
 @section('title', 'Promo Aktif')
-
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('assets/extensions/simple-datatables/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/compiled/css/table-datatable.css') }}">
+@endpush
 @section('content')
 
 @if($promotions->isEmpty())
@@ -12,7 +15,7 @@
     <div class="card border-0 shadow-sm">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-striped align-middle">
+                <table class="display" id="table1">
                     <thead>
                         <tr>
                             <th>Nama Promo</th>
@@ -68,4 +71,8 @@
         </div>
     </div>
 @endif
+@endsection
+@section('scripts')
+<script src="{{ asset('assets/extensions/simple-datatables/umd/simple-datatables.js') }}"></script>
+<script src="{{ asset('assets/static/js/pages/simple-datatables.js') }}"></script>
 @endsection

@@ -31,14 +31,7 @@ class StockMovement extends Model
      */
     public function applyToIngredient(): void
     {
-        if (! $this->relationLoaded('ingredient')) {
-            $this->load('ingredient');
-        }
-
-        $ingredient = $this->ingredient;
-        if (! $ingredient) {
-            return;
-        }
+       
 
         if ($this->movement_type === 'in') {
             $ingredient->increment('stock', $this->qty);
@@ -52,14 +45,7 @@ class StockMovement extends Model
      */
     public function revertFromIngredient(): void
     {
-        if (! $this->relationLoaded('ingredient')) {
-            $this->load('ingredient');
-        }
-
-        $ingredient = $this->ingredient;
-        if (! $ingredient) {
-            return;
-        }
+        
 
         if ($this->movement_type === 'in') {
             $ingredient->decrement('stock', $this->qty);

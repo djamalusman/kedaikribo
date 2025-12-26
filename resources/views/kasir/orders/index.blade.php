@@ -1,7 +1,10 @@
 @extends('layouts.app')
 
 @section('title', 'POS - Daftar Order')
-
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('assets/extensions/simple-datatables/style.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/compiled/css/table-datatable.css') }}">
+@endpush
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-3">
 
@@ -55,14 +58,15 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-striped align-middle mb-0">
+                    <table class="display" id="table1">
                         <thead>
                             <tr>
                                 <th style="width: 120px;">Tanggal</th>
                                 <th>Kode</th>
                                 <th>Customer</th>
                                 <th>Tipe / Meja</th>
-                                <th class="text-end">Total</th>
+                                <th>Total</th>
+                                <th>Status Pembayaran</th>
                                 <th class="text-center" style="width: 220px;">Aksi</th>
                             </tr>
                         </thead>
@@ -88,6 +92,9 @@
                                     <td class="text-end">
                                         {{ rupiah($order->grand_total ?? $order->subtotal) }}
                                     </td>
+                                    <td class="text-end">
+                                        {{$order->status}}
+                                    </td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm">
                                             {{-- Detail + Bayar --}}
@@ -95,25 +102,20 @@
                                                class="btn btn-outline-primary">
                                                 Detail / Bayar
                                             </a>
-
-                                            {{-- Edit isi order (customer + item) --}}
-                                            <a href="{{ route('kasir.orders.edit', $order) }}"
-                                               class="btn btn-outline-secondary">
-                                               Edit
-                                            </a>
-
-                                            {{-- (Opsional) Batalkan bill --}}
-                                            {{-- 
-                                            <form action="{{ route('kasir.orders.destroy', $order) }}"
-                                                  method="POST"
-                                                  onsubmit="return confirm('Batalkan bill ini?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="btn btn-outline-danger">
-                                                    Batal
-                                                </button>
-                                            </form>
-                                            --}}
+                                            @if($order->status =="paid")
+                                                <a href="{{ route('kasir.orders.print', $order) }}"
+                                                    target="_blank"
+                                                    class="btn btn-outline-secondary">
+                                                    Cetak Struk
+                                                </a>
+                                            @else
+                                                 {{-- Edit isi order (customer + item) --}}
+                                                <a href="{{ route('kasir.orders.edit', $order) }}"
+                                                class="btn btn-outline-secondary">
+                                                Edit
+                                                </a>
+                                            @endif
+                                           
                                         </div>
                                     </td>
                                 </tr>
@@ -209,7 +211,7 @@
                                     <td class="text-center">
                                         <a href="{{ route('kasir.orders.show', $order) }}"
                                            class="btn btn-sm btn-outline-primary">
-                                            Detail / Struk
+                                            Detail / Bayar
                                         </a>
                                     </td>
                                 </tr>
@@ -234,7 +236,10 @@
     </div>
 </div>
 
-{{-- Optional: kalau mau default buka tab history ketika ada ?tab=history --}}
+@endsection
+@section('scripts')
+<script src="{{ asset('assets/extensions/simple-datatables/umd/simple-datatables.js') }}"></script>
+<script src="{{ asset('assets/static/js/pages/simple-datatables.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const urlParams = new URLSearchParams(window.location.search);

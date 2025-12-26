@@ -4,29 +4,6 @@
 
 @section('content')
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0">Edit Order #{{ $order->order_code }}</h4>
-
-    </div>
-
-    @if ($errors->any())
-        <div class="alert alert-danger">
-            <div><strong>Terjadi kesalahan:</strong></div>
-            <ul class="mb-0">
-                @foreach ($errors->all() as $err)
-                    <li>{{ $err }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
-    @if (session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
-
     <form action="{{ route('kasir.orders.update', $order) }}" method="POST" id="pos-form">
         @csrf
         @method('PUT')
@@ -84,6 +61,13 @@
                                 </option>
                             @endforeach
                         </select>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="is_reserved" name="is_reserved"
+                                value="reserved" @checked(old('is_reserved', $isReserved))>
+                            <label class="form-check-label" for="is_reserved">
+                                Reserved
+                            </label>
+                        </div>
                     </div>
 
                     <div class="col-md-4">
@@ -101,6 +85,28 @@
                                 </option>
                             @endforeach
                         </select>
+                    </div>
+                </div>
+                <div class="row mt-2" id="reserve-wrapper" style="display:none">
+                        
+                    <div class="col-md-4">
+                        <label class="form-label">Nominal DP</label>
+                        <input type="text" name="nominal_dp" class="form-control rupiah-display" data-target="nominal_dp"
+                            placeholder="Contoh: 15.000"
+                            value="{{ rupiah(old('nominal_dp', $order->reservation->total_dp ?? '')) }}">
+
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Start Date</label>
+                        <input type="datetime-local" name="start_date" class="form-control"
+                            value="{{ old('start_date', optional($order->reservation?->start_date)->format('Y-m-d\TH:i')) }}">
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">End Date</label>
+                        <input type="datetime-local" name="end_date" class="form-control"
+                            value="{{ old('end_date', optional($order->reservation?->end_date)->format('Y-m-d\TH:i')) }}">
                     </div>
                 </div>
             </div>
@@ -193,6 +199,14 @@
                             {{ rupiah($order->discount_total ?? 0) }}
                         </span>
                     </div>
+                    
+
+                    @if (!empty($isReserved))
+                        <div id="dp-summary-row" class="d-flex justify-content-between mb-1">
+                            <span>Nominal DP</span>
+                            <span id="nominal_dp_display" style="color:red">Rp 15.000</span>
+                        </div>
+                    @endif
                     <hr class="my-2">
                     <div class="d-flex justify-content-between mb-3">
                         <strong>Grand Total</strong>
@@ -222,238 +236,282 @@
 
     {{-- ================== SCRIPT POS EDIT ================== --}}
     <script>
-        // ====== Data awal dari PHP ======
-        // cart: item existing dari order_items
-        var cart = @json($initialCart);
-        // promos: daftar promo aktif
-        var promos = @json($promosData);
+/* =========================================================
+   DATA DARI PHP
+========================================================= */
+var cart   = @json($initialCart);
+var promos = @json($promosData);
 
-        var cartTableBody = document.querySelector('#cart-table tbody');
-        var promotionSelect = document.getElementById('promotion_id');
-        var orderTypeSelect = document.getElementById('order_type');
-        var tableWrapper = document.getElementById('table-wrapper');
-        var posForm = document.getElementById('pos-form');
+/* =========================================================
+   ELEMENT
+========================================================= */
+var cartTableBody   = document.querySelector('#cart-table tbody');
+var promotionSelect = document.getElementById('promotion_id');
+var orderTypeSelect = document.getElementById('order_type');
+var tableWrapper    = document.getElementById('table-wrapper');
+var posForm         = document.getElementById('pos-form');
 
-        function formatRupiah(num) {
-            num = Number(num) || 0;
-            return new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0
-            }).format(num);
+var reservedCheckbox = document.getElementById('is_reserved');
+var reserveWrapper   = document.getElementById('reserve-wrapper');
+var dpInput          = document.querySelector('input[name="nominal_dp"]');
+
+/* =========================================================
+   STATE
+========================================================= */
+var subtotal = 0;
+
+/* =========================================================
+   UTIL
+========================================================= */
+function formatRupiah(num) {
+    num = Number(num) || 0;
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0
+    }).format(num);
+}
+
+function parseRupiah(val) {
+    return Number((val || '').replace(/[^0-9]/g, '')) || 0;
+}
+
+function findPromoById(id) {
+    return promos.find(p => String(p.id) === String(id)) || null;
+}
+
+function calculatePromoDiscount(sub) {
+    if (!promotionSelect?.value) return 0;
+
+    var promo = findPromoById(promotionSelect.value);
+    if (!promo) return 0;
+
+    var minAmount = Number(promo.min_amount || 0);
+    if (minAmount && sub < minAmount) return 0;
+
+    var discount = promo.type === 'percent'
+        ? sub * (Number(promo.value) / 100)
+        : Number(promo.value);
+
+    return Math.min(discount, sub);
+}
+
+/* =========================================================
+   RENDER CART & TOTAL (SATU-SATUNYA TEMPAT HITUNG)
+========================================================= */
+function renderCart() {
+    if (!cartTableBody) return;
+
+    cartTableBody.innerHTML = '';
+    subtotal = 0;
+
+    if (cart.length === 0) {
+        cartTableBody.innerHTML =
+            '<tr><td colspan="5" class="text-center text-muted py-3">Keranjang masih kosong.</td></tr>';
+    }
+
+    cart.forEach(function (item, index) {
+        var lineTotal = item.qty * item.price;
+        subtotal += lineTotal;
+
+        cartTableBody.insertAdjacentHTML('beforeend', `
+            <tr>
+                <td>${item.name}</td>
+                <td class="text-center">
+                    <input type="number" min="1" value="${item.qty}"
+                           class="form-control form-control-sm qty-input"
+                           data-index="${index}">
+                </td>
+                <td class="text-end">${formatRupiah(item.price)}</td>
+                <td class="text-end">${formatRupiah(lineTotal)}</td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger remove-item-btn"
+                            data-index="${index}">&times;</button>
+                </td>
+            </tr>
+        `);
+    });
+
+    var discount   = calculatePromoDiscount(subtotal);
+    var grandTotal = subtotal - discount;
+
+    /* ================= DP LOGIC ================= */
+    if (reservedCheckbox) {
+        var dp = parseRupiah(dpInput?.value);
+        grandTotal -= dp; // BOLEH NEGATIF
+    }
+
+    // var discountInput = document.getElementById('discount_total_input');
+    // if (discountInput) {
+    //     discountInput.value = discount;
+    // }
+    /* ============================================ */
+
+    document.getElementById('subtotal_display').innerText    = formatRupiah(subtotal);
+    document.getElementById('discount_display').innerText    = formatRupiah(discount);
+    document.getElementById('grand_total_display').innerText = formatRupiah(grandTotal);
+}
+
+/* =========================================================
+   EVENT LISTENERS
+========================================================= */
+
+// Tambah menu
+document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+        var id    = this.dataset.id;
+        var name  = this.dataset.name;
+        var price = Number(this.dataset.price) || 0;
+
+        var item = cart.find(i => String(i.menu_item_id) === String(id));
+        item ? item.qty++ : cart.push({ menu_item_id: id, name, price, qty: 1 });
+
+        renderCart();
+    });
+});
+
+// Update qty & remove
+cartTableBody?.addEventListener('input', function (e) {
+    if (e.target.classList.contains('qty-input')) {
+        var idx = e.target.dataset.index;
+        cart[idx].qty = Math.max(1, parseInt(e.target.value) || 1);
+        renderCart();
+    }
+});
+
+cartTableBody?.addEventListener('click', function (e) {
+    if (e.target.classList.contains('remove-item-btn')) {
+        cart.splice(e.target.dataset.index, 1);
+        renderCart();
+    }
+});
+
+// Promo
+promotionSelect?.addEventListener('change', renderCart);
+
+// DP realtime
+dpInput?.addEventListener('input', renderCart);
+var dpSummaryRow = document.getElementById('dp-summary-row');
+
+// Reserved toggle
+
+function toggleReserved() {
+    if (!reservedCheckbox) return;
+
+    if (reservedCheckbox.checked) {
+        // TAMPILKAN
+        if (reserveWrapper) reserveWrapper.style.display = 'block';
+        if (dpSummaryRow) dpSummaryRow.style.display = 'flex';
+    } else {
+        // SEMBUNYIKAN
+        if (reserveWrapper) reserveWrapper.style.display = 'none';
+        if (dpSummaryRow) dpSummaryRow.style.display = 'none';
+
+        // RESET DP
+        if (dpInput) dpInput.value = '';
+        if (document.getElementById('nominal_dp_display')) {
+            document.getElementById('nominal_dp_display').innerText = formatRupiah(0);
         }
+    }
 
-        function findPromoById(id) {
-            for (var i = 0; i < promos.length; i++) {
-                if (String(promos[i].id) === String(id)) {
-                    return promos[i];
-                }
-            }
-            return null;
-        }
+    renderCart(); // ⬅️ penting
+}
 
-        function calculatePromoDiscount(subtotal) {
-            if (!promotionSelect) return 0;
+reservedCheckbox?.addEventListener('change', toggleReserved);
 
-            var promoId = promotionSelect.value;
-            if (!promoId) return 0;
+// Order type
+function toggleTable() {
+    if (!orderTypeSelect || !tableWrapper) return;
+    tableWrapper.style.display = orderTypeSelect.value === 'dine_in' ? '' : 'none';
+}
 
-            var promo = findPromoById(promoId);
-            if (!promo) return 0;
+orderTypeSelect?.addEventListener('change', toggleTable);
 
-            var minAmount = promo.min_amount ? Number(promo.min_amount) : 0;
-            if (minAmount > 0 && subtotal < minAmount) {
-                return 0;
-            }
+/* =========================================================
+   INIT
+========================================================= */
+document.addEventListener('DOMContentLoaded', function () {
+    toggleTable();
+    toggleReserved();
+    renderCart();
+});
 
-            var discount = 0;
-            if (promo.type === 'percent') {
-                discount = subtotal * (Number(promo.value) / 100);
-            } else {
-                discount = Number(promo.value);
-            }
+/* =========================================================
+   SUBMIT
+========================================================= */
+posForm?.addEventListener('submit', function (e) {
+    if (cart.length === 0) {
+        e.preventDefault();
+        alert('Keranjang masih kosong.');
+        return;
+    }
 
-            if (discount > subtotal) {
-                discount = subtotal;
-            }
-            return discount;
-        }
+    document.querySelectorAll('.cart-hidden-input').forEach(el => el.remove());
 
-        function renderCart() {
-            if (!cartTableBody) return;
-
-            cartTableBody.innerHTML = '';
-
-            if (cart.length === 0) {
-                var emptyTr = document.createElement('tr');
-                emptyTr.innerHTML =
-                    '<td colspan="5" class="text-center text-muted py-3">Keranjang masih kosong.</td>';
-                cartTableBody.appendChild(emptyTr);
-            }
-
-            var subtotal = 0;
-
-            for (var i = 0; i < cart.length; i++) {
-                var item = cart[i];
-                var lineTotal = item.qty * item.price;
-                subtotal += lineTotal;
-
-                var tr = document.createElement('tr');
-
-                var tdName = document.createElement('td');
-                tdName.textContent = item.name;
-
-                var tdQty = document.createElement('td');
-                tdQty.className = 'text-center';
-                tdQty.innerHTML =
-                    '<input type="number" min="1" value="' + item.qty +
-                    '" class="form-control form-control-sm qty-input" data-index="' + i + '">';
-
-                var tdPrice = document.createElement('td');
-                tdPrice.className = 'text-end';
-                tdPrice.textContent = formatRupiah(item.price);
-
-                var tdTotal = document.createElement('td');
-                tdTotal.className = 'text-end';
-                tdTotal.textContent = formatRupiah(lineTotal);
-
-                var tdAction = document.createElement('td');
-                tdAction.className = 'text-center';
-                tdAction.innerHTML =
-                    '<button type="button" class="btn btn-sm btn-danger remove-item-btn" data-index="' + i +
-                    '">&times;</button>';
-
-                tr.appendChild(tdName);
-                tr.appendChild(tdQty);
-                tr.appendChild(tdPrice);
-                tr.appendChild(tdTotal);
-                tr.appendChild(tdAction);
-
-                cartTableBody.appendChild(tr);
-            }
-
-            var discount = calculatePromoDiscount(subtotal);
-            var grandTotal = subtotal - discount;
-
-            var elSub = document.getElementById('subtotal_display');
-            var elDisc = document.getElementById('discount_display');
-            var elGrand = document.getElementById('grand_total_display');
-
-            if (elSub) elSub.innerText = formatRupiah(subtotal);
-            if (elDisc) elDisc.innerText = formatRupiah(discount);
-            if (elGrand) elGrand.innerText = formatRupiah(grandTotal);
-        }
-
-        // Tambah menu ke cart
-        var addButtons = document.querySelectorAll('.add-to-cart-btn');
-        for (var i = 0; i < addButtons.length; i++) {
-            addButtons[i].addEventListener('click', function() {
-                var id = this.getAttribute('data-id');
-                var name = this.getAttribute('data-name');
-                var price = parseFloat(this.getAttribute('data-price')) || 0;
-
-                var foundIndex = -1;
-                for (var j = 0; j < cart.length; j++) {
-                    if (String(cart[j].menu_item_id) === String(id)) {
-                        foundIndex = j;
-                        break;
-                    }
-                }
-
-                if (foundIndex >= 0) {
-                    cart[foundIndex].qty = cart[foundIndex].qty + 1;
-                } else {
-                    cart.push({
-                        menu_item_id: id,
-                        name: name,
-                        price: price,
-                        qty: 1
-                    });
-                }
-                renderCart();
-            });
-        }
-
-        // Ubah qty / hapus item di cart
-        if (cartTableBody) {
-            cartTableBody.addEventListener('input', function(e) {
-                if (e.target.classList.contains('qty-input')) {
-                    var index = e.target.getAttribute('data-index');
-                    var qty = parseInt(e.target.value, 10);
-                    if (!qty || qty < 1) {
-                        qty = 1;
-                    }
-                    cart[index].qty = qty;
-                    renderCart();
-                }
-            });
-
-            cartTableBody.addEventListener('click', function(e) {
-                if (e.target.classList.contains('remove-item-btn')) {
-                    var index = e.target.getAttribute('data-index');
-                    cart.splice(index, 1);
-                    renderCart();
-                }
-            });
-        }
-
-        // Promo berubah
-        if (promotionSelect) {
-            promotionSelect.addEventListener('change', function() {
-                renderCart();
-            });
-        }
-
-        // Show/hide pilihan meja
-        function toggleTable() {
-            if (!orderTypeSelect || !tableWrapper) return;
-
-            if (orderTypeSelect.value === 'dine_in') {
-                tableWrapper.style.display = '';
-            } else {
-                tableWrapper.style.display = 'none';
-            }
-        }
-
-        if (orderTypeSelect) {
-            orderTypeSelect.addEventListener('change', toggleTable);
-        }
-
-        // Inisialisasi awal
-        document.addEventListener('DOMContentLoaded', function() {
-            toggleTable();
-            renderCart();
+    cart.forEach(function (item, idx) {
+        ['menu_item_id', 'name', 'qty', 'price'].forEach(field => {
+            var input = document.createElement('input');
+            input.type  = 'hidden';
+            input.name  = `cart[${idx}][${field}]`;
+            input.value = item[field];
+            input.className = 'cart-hidden-input';
+            posForm.appendChild(input);
         });
+    });
+});
+</script>
 
-        // Submit: kirim cart sebagai hidden input
-        if (posForm) {
-            posForm.addEventListener('submit', function(e) {
-                if (cart.length === 0) {
-                    e.preventDefault();
-                    alert('Keranjang masih kosong.');
-                    return;
-                }
 
-                var oldHidden = document.querySelectorAll('.cart-hidden-input');
-                for (var i = 0; i < oldHidden.length; i++) {
-                    oldHidden[i].parentNode.removeChild(oldHidden[i]);
-                }
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const reservedCheckbox = document.getElementById('is_reserved');
+            const reserveWrapper = document.getElementById('reserve-wrapper');
 
-                for (var idx = 0; idx < cart.length; idx++) {
-                    var item = cart[idx];
+            function toggleReserved() {
+                if (!reservedCheckbox || !reserveWrapper) return;
 
-                    var fields = ['menu_item_id', 'name', 'qty', 'price'];
-                    for (var f = 0; f < fields.length; f++) {
-                        var field = fields[f];
-                        var input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'cart[' + idx + '][' + field + ']';
-                        input.value = item[field];
-                        input.className = 'cart-hidden-input';
-                        posForm.appendChild(input);
-                    }
-                }
-            });
-        }
+                reserveWrapper.style.display = reservedCheckbox.checked ?
+                    'flex' :
+                    'none';
+            }
+
+            if (reservedCheckbox) {
+                reservedCheckbox.addEventListener('change', toggleReserved);
+                toggleReserved(); // ⬅️ penting untuk edit mode
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+
+            const dpInput = document.querySelector('input[name="nominal_dp"]');
+            const dpDisplay = document.getElementById('nominal_dp_display');
+
+            function parseRupiah(val) {
+                return Number((val || '').replace(/[^0-9]/g, '')) || 0;
+            }
+
+            function recalculateTotal() {
+                let discount = calculatePromoDiscount(subtotal);
+                let grandTotal = subtotal - discount;
+
+                const dp = parseRupiah(dpInput?.value);
+
+                // DP boleh bikin negatif
+                grandTotal -= dp;
+
+                // Update UI
+                if (dpDisplay) dpDisplay.innerText = formatRupiah(dp);
+                document.getElementById('subtotal_display').innerText = formatRupiah(subtotal);
+                document.getElementById('discount_display').innerText = formatRupiah(discount);
+                document.getElementById('grand_total_display').innerText = formatRupiah(grandTotal);
+            }
+
+            // 🔥 Realtime saat user mengetik
+            dpInput?.addEventListener('input', recalculateTotal);
+
+            // Hitung pertama kali (page load)
+            recalculateTotal();
+        });
     </script>
 @endsection

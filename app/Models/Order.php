@@ -19,6 +19,11 @@ class Order extends Model
         return $this->belongsTo(Outlet::class);
     }
 
+    public function reservation()
+    {
+        return $this->hasOne(\App\Models\Reserved::class, 'order_id');
+    }
+
     public function table(): BelongsTo
     {
         return $this->belongsTo(CafeTable::class, 'table_id');
@@ -39,6 +44,10 @@ class Order extends Model
         return $this->hasMany(OrderItem::class);
     }
 
+    public function reserved()
+    {
+        return $this->hasOne(Reserved::class);
+    }
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);

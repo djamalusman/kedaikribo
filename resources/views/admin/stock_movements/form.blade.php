@@ -1,7 +1,7 @@
 @csrf
 
 <div class="row g-3">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <label class="form-label">Outlet</label>
         <select name="outlet_id" class="form-select" required>
             <option value="">-- Pilih Outlet --</option>
@@ -14,7 +14,7 @@
         </select>
     </div>
 
-    <div class="col-md-4">
+    {{-- <div class="col-md-4">
         <label class="form-label">Bahan Baku</label>
         <select name="ingredient_id" class="form-select" required>
             <option value="">-- Pilih Bahan --</option>
@@ -25,38 +25,60 @@
                 </option>
             @endforeach
         </select>
-    </div>
+    </div> --}}
 
-    <div class="col-md-4">
+    <div class="col-md-3">
         <label class="form-label">Jenis Pergerakan</label>
         <select name="movement_type" class="form-select" required>
             @php
                 $mt = old('movement_type', $movement->movement_type ?? 'in');
             @endphp
             <option value="in"  @selected($mt === 'in')>IN (Stok Masuk)</option>
-            <option value="out" @selected($mt === 'out')>OUT (Stok Keluar)</option>
         </select>
+    </div>
+    <div class="col-md-3">
+        <input type="hidden"
+        name="purchase_price"
+        value="{{ old('price', $movement->purchase_price ?? '') }}">
+        <label class="form-label">Harga Beli</label>
+        <input type="text"
+            class="form-control rupiah-display"
+            data-target="purchase_price"
+            placeholder="Contoh: 15.000"
+            value="{{ old('purchase_price', isset($movement) ? rupiah($movement->purchase_price) : '') }}">
+    </div>
+
+    <div class="col-md-3">
+        <label class="form-label">Nama</label>
+        <input type="text"
+               name="namestock" class="form-control" placeholder="Input Milo/Kopi Kapal Api"
+               value="{{ old('namestock', $movement->namestock ?? "") }}" required>
     </div>
 
     <div class="col-md-4">
+        <label class="form-label">Satuan</label>
+        <input type="text"
+               name="satuan" class="form-control"
+               value="{{ old('qty', $movement->satuan ?? 0) }}" required>
+    </div>
+    <div class="col-md-4">
         <label class="form-label">Qty</label>
-        <input type="number" step="0.001" min="0.001"
+        <input type="number"
                name="qty" class="form-control"
                value="{{ old('qty', $movement->qty ?? 0) }}" required>
     </div>
 
-    <div class="col-md-4">
-        <label class="form-label">Jenis Referensi</label>
-        <input type="text" name="reference_type" class="form-control"
-               placeholder="PO, WASTE, ADJUST, dll"
-               value="{{ old('reference_type', $movement->reference_type ?? '') }}">
-    </div>
 
+    
     <div class="col-md-4">
-        <label class="form-label">No. Referensi</label>
-        <input type="text" name="reference_no" class="form-control"
-               placeholder="No PO / Dokumen"
-               value="{{ old('reference_no', $movement->reference_no ?? '') }}">
+        <label class="form-label">Tanggal Beli</label>
+        <input type="datetime-local"
+       name="created_at"
+       value="{{ old('created_at', optional($movement->created_at)->format('Y-m-d\TH:i:s')) }}"
+       class="form-control"
+       step="1"
+       required>
+
     </div>
 
     <div class="col-12">

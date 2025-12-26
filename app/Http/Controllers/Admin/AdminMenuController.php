@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
 use App\Models\Outlet;
 use App\Models\Category; // kalau ada kategori
+use App\Models\OrderItem;
+use App\Models\StockMovement;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -21,6 +23,7 @@ class AdminMenuController extends Controller
         ->orderByDesc('is_active')
         ->orderBy('name')
         ->paginate(15);
+        
 
 
         return view('admin.menu.index', compact('menus'));
@@ -30,17 +33,19 @@ class AdminMenuController extends Controller
     {
         $categories = Category::orderBy('name')->get();
         $outlets = Outlet::orderBy('name')->get();
-         return view('admin.menu.create', compact('categories', 'outlets'));
+        $stock = StockMovement::get();
+         return view('admin.menu.create', compact('categories', 'outlets','stock'));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'        => 'required|string|max:150',
+            'name'        => 'nullable|string|max:150',
             'category_id' => 'nullable|exists:categories,id',
             'price'       => 'required|numeric|min:0',
             'description' => 'nullable|string',
             'code'        => 'nullable|string',
+            'namestock'   => 'nullable|exists:stock_movements,id',
             'is_active'   => 'sometimes|boolean',
             'outlet_id'   => 'nullable|exists:outlets,id',
             'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
@@ -55,26 +60,46 @@ class AdminMenuController extends Controller
                 $data['code'] = $this->generateMenuCode($data['category_id']);
             }
 
-            // 📤 Upload image → public_html/storage/menu
+            // 📤 Upload image
             if ($request->hasFile('image')) {
-
                 $file = $request->file('image');
                 $filename = uniqid().'_'.$file->getClientOriginalName();
-
-                $targetDir = base_path('../public_html/storage/menu');
-
-                if (!is_dir($targetDir)) {
-                    mkdir($targetDir, 0755, true);
-                }
-
-                // SIMPAN LANGSUNG KE public_html
-                $file->move($targetDir, $filename);
-
+                $file->storeAs('menu', $filename, 'public');
                 $data['image'] = $filename;
             }
 
+            // ===== JIKA AMBIL DARI STOCK =====
+            if (!empty($data['namestock'])) {
 
-            MenuItem::create($data);
+                $stock = StockMovement::find($data['namestock']);
+
+                $menu = MenuItem::create([
+                    'name'        => $stock->namestock,
+                    'stock_id'    => $stock->id,
+                    'category_id' => $data['category_id'],
+                    'price'       => $data['price'],
+                    'description' => $data['description'],
+                    'code'        => $data['code'],
+                    'outlet_id'        => $data['outlet_id'],
+                    'is_active'   => $data['is_active'],
+                    'image'       => $data['image'] ?? null,
+                ]);
+
+            } 
+            // ===== MANUAL INPUT =====
+            else {
+
+                $menu = MenuItem::create([
+                    'name'        => $data['name'],
+                    'category_id' => $data['category_id'],
+                    'price'       => $data['price'],
+                    'description' => $data['description'],
+                    'code'        => $data['code'],
+                    'outlet_id'        => $data['outlet_id'],
+                    'is_active'   => $data['is_active'],
+                    'image'       => $data['image'] ?? null,
+                ]);
+            }
 
             DB::commit();
 
@@ -83,6 +108,7 @@ class AdminMenuController extends Controller
                 ->with('success', 'Menu berhasil dibuat.');
 
         } catch (\Throwable $e) {
+
             DB::rollBack();
 
             Log::error('Gagal membuat Menu', [
@@ -94,80 +120,161 @@ class AdminMenuController extends Controller
     }
 
 
+
     public function edit(MenuItem $menu)
     {
         $categories = Category::orderBy('name')->get();
         $outlets = Outlet::orderBy('name')->get();
-        return view('admin.menu.edit', compact('menu','categories', 'outlets'));
+        $stock = StockMovement::get();
+        return view('admin.menu.edit', compact('menu','categories', 'outlets','stock'));
     }
+
+    // public function update(Request $request, MenuItem $menu)
+    // {
+    //     $data = $request->validate([
+    //         'name'        => 'required|string|max:150',
+    //         'category_id' => 'nullable|exists:categories,id',
+    //         'price'       => 'required|numeric|min:0',
+    //         'description' => 'nullable|string',
+    //         'is_active'   => 'sometimes|boolean',
+    //         'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+    //     ]);
+
+    //     try {
+    //         DB::beginTransaction();
+
+    //         $data['is_active'] = $request->boolean('is_active');
+
+            
+    //         if ($request->hasFile('image')) {
+
+    //             // hapus image lama (aman Linux / Windows)
+    //             if (!empty($menu->image)) {
+    //                 Storage::disk('public')->delete('menu/'.$menu->image);
+    //             }
+
+    //             $file = $request->file('image');
+    //             $filename = uniqid().'_'.$file->getClientOriginalName();
+
+    //             // simpan image
+    //             $file->storeAs('menu', $filename, 'public');
+
+    //             $data['image'] = $filename;
+    //         }
+
+
+
+    //         $menu->update($data);
+
+    //         DB::commit();
+
+    //         return redirect()
+    //             ->route('admin.menu.index')
+    //             ->with('success', 'Menu berhasil diupdate.');
+
+    //     } catch (\Throwable $e) {
+    //         DB::rollBack();
+
+    //         Log::error('Gagal update menu', [
+    //             'menu_id' => $menu->id,
+    //             'message' => $e->getMessage(),
+    //         ]);
+
+    //         return back()
+    //             ->with('error', 'Gagal menyimpan perubahan.')
+    //             ->withInput();
+    //     }
+    // }
 
     public function update(Request $request, MenuItem $menu)
-    {
-        $data = $request->validate([
-            'name'        => 'required|string|max:150',
-            'category_id' => 'nullable|exists:categories,id',
-            'price'       => 'required|numeric|min:0',
-            'description' => 'nullable|string',
-            'is_active'   => 'sometimes|boolean',
-            'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-        ]);
+{
+    $data = $request->validate([
+        'name'        => 'nullable|string|max:150',
+        'category_id' => 'nullable|exists:categories,id',
+        'price'       => 'required|numeric|min:0',
+        'description' => 'nullable|string',
+        'namestock'   => 'nullable|exists:stock_movements,id',
+        'is_active'   => 'sometimes|boolean',
+        'image'       => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+    ]);
 
-        try {
-            DB::beginTransaction();
+    try {
+        DB::beginTransaction();
 
-            $data['is_active'] = $request->boolean('is_active');
+        $data['is_active'] = $request->boolean('is_active');
 
-            if ($request->hasFile('image')) {
+        /* ================= IMAGE ================= */
+        if ($request->hasFile('image')) {
 
-                // hapus image lama
-                if (!empty($menu->image)) {
-                    $old = base_path('../public_html/storage/menu/'.$menu->image);
-                    if (file_exists($old)) {
-                        @unlink($old);
-                    }
-                }
-
-                $file = $request->file('image');
-                $filename = uniqid().'_'.$file->getClientOriginalName();
-
-                $targetDir = base_path('../public_html/storage/menu');
-
-                if (!is_dir($targetDir)) {
-                    mkdir($targetDir, 0755, true);
-                }
-
-                $file->move($targetDir, $filename);
-
-                $data['image'] = $filename;
+            if ($menu->image) {
+                Storage::disk('public')->delete('menu/'.$menu->image);
             }
 
+            $file = $request->file('image');
+            $filename = uniqid().'_'.$file->getClientOriginalName();
+            $file->storeAs('menu', $filename, 'public');
 
-            $menu->update($data);
-
-            DB::commit();
-
-            return redirect()
-                ->route('admin.menu.index')
-                ->with('success', 'Menu berhasil diupdate.');
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-
-            Log::error('Gagal update menu', [
-                'menu_id' => $menu->id,
-                'message' => $e->getMessage(),
-            ]);
-
-            return back()
-                ->with('error', 'Gagal menyimpan perubahan.')
-                ->withInput();
+            $data['image'] = $filename;
         }
-    }
 
+        /* ================= LOGIC STOCK ================= */
+
+        // 🔹 JIKA PILIH / GANTI STOCK
+        if (!empty($data['namestock'])) {
+
+            // hanya update kalau stock berubah
+            if ($menu->stock_id != $data['namestock']) {
+
+                $stock = StockMovement::findOrFail($data['namestock']);
+
+                $data['name']     = $stock->namestock;
+                $data['stock_id'] = $stock->id;
+            }
+
+        }
+        // 🔹 JIKA STOCK DIKOSONGKAN (BALIK MANUAL)
+        else {
+
+            $data['stock_id'] = null;
+
+            if (empty($data['name'])) {
+                throw new \Exception(
+                    'Nama menu wajib diisi jika tidak menggunakan stock'
+                );
+            }
+        }
+
+        // hapus field virtual
+        unset($data['namestock']);
+
+        /* ================= UPDATE ================= */
+        $menu->update($data);
+
+        DB::commit();
+
+        return redirect()
+            ->route('admin.menu.index')
+            ->with('success', 'Menu berhasil diupdate.');
+
+    } catch (\Throwable $e) {
+
+        DB::rollBack();
+
+        Log::error('Gagal update menu', [
+            'menu_id' => $menu->id,
+            'message' => $e->getMessage(),
+        ]);
+
+        return back()
+            ->with('error', 'Gagal menyimpan perubahan.')
+            ->withInput();
+    }
+}
 
 
     public function destroy(MenuItem $menu)
     {
+        dd($menu);
         $menu->delete();
 
         return redirect()->route('admin.menu.index')

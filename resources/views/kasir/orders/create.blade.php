@@ -45,7 +45,7 @@
                     {{-- HEADER ORDER --}}
                     <h5 class="mb-2">Informasi Order</h5>
                     <div class="row g-2 mb-3">
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="form-label">Tipe Order</label>
                             <select name="order_type" id="order_type" class="form-select" required>
                                 <option value="dine_in" {{ old('order_type') === 'dine_in' ? 'selected' : '' }}>Dine In
@@ -56,18 +56,26 @@
                                 </option>
                             </select>
                         </div>
-                        <div class="col-md-3" id="table-wrapper">
+                        <div class="col-md-4" id="table-wrapper">
                             <label class="form-label">Meja (untuk Dine In)</label>
-                            <select name="table_id" class="form-select">
+                            <select name="table_id" class="form-select" id="table_id">
                                 <option value="">Pilih Meja</option>
                                 @foreach ($tables as $t)
-                                    <option value="{{ $t->id }}-{{ $t->status }}" {{ old('table_id') == $t->id ? 'selected' : '' }}>
+                                    <option value="{{ $t->id }}-{{ $t->status }}">
                                         {{ $t->name }} ({{ $t->status }})
                                     </option>
                                 @endforeach
                             </select>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_reserved" name="is_reserved"
+                                    value="reserved">
+                                <label class="form-check-label" for="is_reserved">
+                                    Reserved
+                                </label>
+                            </div>
                         </div>
-                        <div class="col-md-3">
+
+                        <div class="col-md-4">
                             <label class="form-label">Promo</label>
                             <select name="promotion_id" id="promotion_id" class="form-select">
                                 <option value="">Tidak ada</option>
@@ -79,6 +87,22 @@
                                 @endforeach
                             </select>
                             <small class="text-muted d-block">Diskon dihitung otomatis dari promo.</small>
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3" id="reserve-date-wrapper" style="display:none">
+                        <div class="col-md-4" id="dp-wrapper" style="display:none">
+                            <label class="form-label">Nominal DP</label>
+                            <input type="text" name="nominal_dp" class="form-control rupiah-display"
+                                data-target="nominal_dp" placeholder="Contoh: 15.000" </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Start Date</label>
+                            <input type="datetime-local" name="start_date" class="form-control">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">End Date</label>
+                            <input type="datetime-local" name="end_date" class="form-control">
                         </div>
                     </div>
 
@@ -106,34 +130,34 @@
                                         id="cat-{{ $cat->id }}" role="tabpanel">
                                         <div class="row g-2">
                                             @forelse($cat->menuItems as $menu)
-                                            <div class="col-6 col-md-2 mb-6">
-                                                <button type="button"
-                                                    class="btn btn-outline-secondary w-100 text-start add-to-cart-btn p-0 overflow-hidden"
-                                                    data-id="{{ $menu->id }}"
-                                                    data-name="{{ $menu->name }}"
-                                                    data-price="{{ $menu->price }}">
+                                                <div class="col-6 col-md-2 mb-6">
+                                                    <button type="button"
+                                                        class="btn btn-outline-secondary w-100 text-start add-to-cart-btn p-0 overflow-hidden"
+                                                        data-id="{{ $menu->id }}" data-name="{{ $menu->name }}"
+                                                        data-price="{{ $menu->price }}">
 
-                                                    {{-- Gambar --}}
-                                                    <div class="ratio ratio-1x1">
-                                                        <img src="{{ $menu->image
-                                                                ? asset('storage/menu/' . $menu->image)
-                                                                : asset('images/no-image.png') }}"
-                                                            class="img-fluid object-fit-cover"
-                                                            alt="{{ $menu->name }}">
-                                                    </div>
+                                                        {{-- Gambar --}}
+                                                        <div class="ratio ratio-1x1"style="height:250px;">
+                                                            <img src="{{ $menu->image ? asset('storage/menu/' . $menu->image) : asset('images/no-image.png') }}"
+                                                                class="img-fluid object-fit-cover"
+                                                                alt="{{ $menu->name }}">
+                                                        </div>
 
-                                                    {{-- Info --}}
-                                                    <div class="p-2">
-                                                        <div class="fw-semibold text-truncate">{{ $menu->name }}</div>
-                                                        <div class="small text-muted">{{ rupiah($menu->price) }}</div>
-                                                    </div>
-                                                </button>
-                                            </div>
-                                        @empty
-                                            <div class="col-12">
-                                                <span class="text-muted small">Tidak ada menu di kategori ini.</span>
-                                            </div>
-                                        @endforelse
+                                                        {{-- Info --}}
+                                                        <div class="p-2">
+                                                            <div class="fw-semibold text-truncate">{{ $menu->name }}
+                                                            </div>
+                                                            <div class="small text-muted">{{ rupiah($menu->price) }}
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                            @empty
+                                                <div class="col-12">
+                                                    <span class="text-muted small">Tidak ada menu di kategori
+                                                        ini.</span>
+                                                </div>
+                                            @endforelse
 
                                         </div>
                                     </div>
@@ -180,172 +204,275 @@
             </div>
         </div>
     </section>
-                <script>
-                    console.log('POS Create JS loaded');
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
 
-                    const cart = [];
-                    const cartTableBody = document.querySelector('#cart-table tbody');
-                    const promotionSelect = document.getElementById('promotion_id');
+            console.log('POS Create JS loaded');
 
-                    // data promo ke JS
-                    const promos = @json($promos);
+            /* =========================================================
+             * HELPER (ANTI NULL)
+             * ========================================================= */
+            function on(el, event, handler) {
+                if (el) el.addEventListener(event, handler);
+            }
 
-                    function findPromoById(id) {
-                        return promos.find(p => String(p.id) === String(id)) || null;
-                    }
+            function setText(id, value) {
+                const el = document.getElementById(id);
+                if (el) el.innerText = value;
+            }
 
-                    function formatRupiah(num) {
-                        num = Number(num) || 0;
-                        return new Intl.NumberFormat('id-ID', {
-                            style: 'currency',
-                            currency: 'IDR',
-                            minimumFractionDigits: 0
-                        }).format(num);
-                    }
+            /* =========================================================
+             * ELEMENTS
+             * ========================================================= */
+            const form = document.getElementById('pos-form');
+            const cartTableBody = document.querySelector('#cart-table tbody');
+            const promotionSelect = document.getElementById('promotion_id');
 
-                    function calculatePromoDiscount(subtotal) {
-                        const promoId = promotionSelect.value;
-                        if (!promoId) return 0;
+            const orderTypeSelect = document.getElementById('order_type');
+            const tableWrapper = document.getElementById('table-wrapper');
+            const tableSelect = document.getElementById('table_id');
 
-                        const promo = findPromoById(promoId);
-                        if (!promo) return 0;
+            // 🔴 TAB MENU (MENU LIST)
+            const tabContent = document.querySelector('.tab-content');
 
-                        const minAmount = promo.min_amount ? Number(promo.min_amount) : 0;
-                        if (minAmount > 0 && subtotal < minAmount) {
-                            return 0;
-                        }
+            // 🔴 RESERVED CHECKBOX
+            const reservedCheckbox = document.getElementById('is_reserved');
 
-                        let discount = 0;
-                        if (promo.type === 'percent') {
-                            discount = subtotal * (Number(promo.value) / 100);
-                        } else {
-                            discount = Number(promo.value);
-                        }
+            // 🔴 DP
+            const dpWrapper = document.getElementById('dp-wrapper');
+            const dpInput = dpWrapper ?
+                dpWrapper.querySelector('input[name="nominal_dp"]') :
+                null;
 
-                        if (discount > subtotal) discount = subtotal;
-                        return discount;
-                    }
+            // 🔴 RESERVE DATE
+            const reserveDateWrapper = document.getElementById('reserve-date-wrapper');
+            const startDateInput = reserveDateWrapper ?
+                reserveDateWrapper.querySelector('input[name="start_date"]') :
+                null;
+            const endDateInput = reserveDateWrapper ?
+                reserveDateWrapper.querySelector('input[name="end_date"]') :
+                null;
 
-                    function renderCart() {
-                        cartTableBody.innerHTML = '';
-                        let subtotal = 0;
+            /* =========================================================
+             * DATA
+             * ========================================================= */
+            const cart = [];
+            const promos = @json($promos);
 
-                        cart.forEach((item, index) => {
-                            const lineTotal = item.qty * item.price;
-                            subtotal += lineTotal;
+            /* =========================================================
+             * UTIL
+             * ========================================================= */
+            function findPromoById(id) {
+                return promos.find(p => String(p.id) === String(id)) || null;
+            }
 
-                            const tr = document.createElement('tr');
-                            tr.innerHTML = `
+            function formatRupiah(num) {
+                num = Number(num) || 0;
+                return new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    minimumFractionDigits: 0
+                }).format(num);
+            }
+
+            function calculatePromoDiscount(subtotal) {
+                if (!promotionSelect || !promotionSelect.value) return 0;
+
+                const promo = findPromoById(promotionSelect.value);
+                if (!promo) return 0;
+
+                if (promo.min_amount && subtotal < Number(promo.min_amount)) return 0;
+
+                let discount = promo.type === 'percent' ?
+                    subtotal * (Number(promo.value) / 100) :
+                    Number(promo.value);
+
+                return Math.min(discount, subtotal);
+            }
+
+            /* =========================================================
+             * CART
+             * ========================================================= */
+            function renderCart() {
+                if (!cartTableBody) return;
+
+                cartTableBody.innerHTML = '';
+                let subtotal = 0;
+
+                cart.forEach((item, index) => {
+                    const lineTotal = item.qty * item.price;
+                    subtotal += lineTotal;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
                 <td>${item.name}</td>
                 <td class="text-center">
                     <input type="number" min="1" value="${item.qty}"
-                           class="form-control form-control-sm qty-input"
-                           data-index="${index}">
+                        class="form-control form-control-sm qty-input"
+                        data-index="${index}">
                 </td>
                 <td class="text-end">${formatRupiah(item.price)}</td>
                 <td class="text-end">${formatRupiah(lineTotal)}</td>
                 <td class="text-end">
                     <button type="button"
-                            class="btn btn-sm btn-danger remove-item-btn"
-                            data-index="${index}">&times;</button>
+                        class="btn btn-sm btn-danger remove-item-btn"
+                        data-index="${index}">&times;</button>
                 </td>
             `;
-                            cartTableBody.appendChild(tr);
+                    cartTableBody.appendChild(tr);
+                });
+
+                const discount = calculatePromoDiscount(subtotal);
+                const grandTotal = subtotal - discount;
+
+                setText('subtotal_display', formatRupiah(subtotal));
+                setText('discount_display', formatRupiah(discount));
+                setText('grand_total_display', formatRupiah(grandTotal));
+            }
+
+            document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    const name = this.dataset.name;
+                    const price = parseFloat(this.dataset.price) || 0;
+
+                    let item = cart.find(c => c.menu_item_id === id);
+                    if (item) {
+                        item.qty++;
+                    } else {
+                        cart.push({
+                            menu_item_id: id,
+                            name,
+                            price,
+                            qty: 1
                         });
+                    }
+                    renderCart();
+                });
+            });
 
-                        const discount = calculatePromoDiscount(subtotal);
-                        const grandTotal = subtotal - discount;
+            on(cartTableBody, 'input', function(e) {
+                if (e.target.classList.contains('qty-input')) {
+                    cart[e.target.dataset.index].qty = parseInt(e.target.value) || 1;
+                    renderCart();
+                }
+            });
 
-                        document.getElementById('subtotal_display').innerText = formatRupiah(subtotal);
-                        document.getElementById('discount_display').innerText = formatRupiah(discount);
-                        document.getElementById('grand_total_display').innerText = formatRupiah(grandTotal);
+            on(cartTableBody, 'click', function(e) {
+                if (e.target.classList.contains('remove-item-btn')) {
+                    cart.splice(e.target.dataset.index, 1);
+                    renderCart();
+                }
+            });
+
+            on(promotionSelect, 'change', renderCart);
+
+            /* =========================================================
+             * TABLE / RESERVED / DP / DATE
+             * ========================================================= */
+            function toggleTable() {
+                if (!orderTypeSelect || !tableWrapper) return;
+                tableWrapper.style.display =
+                    orderTypeSelect.value === 'dine_in' ? '' : 'none';
+            }
+
+            function toggleReservedUI() {
+                if (!reservedCheckbox) return;
+
+                const isReserved = reservedCheckbox.checked;
+
+                if (isReserved) {
+                    if (dpWrapper) dpWrapper.style.display = 'block';
+                    if (reserveDateWrapper) reserveDateWrapper.style.display = 'flex';
+
+                    if (tabContent) tabContent.style.display = 'none';
+                } else {
+                    if (dpWrapper) dpWrapper.style.display = 'none';
+                    if (reserveDateWrapper) reserveDateWrapper.style.display = 'none';
+
+                    if (dpInput) dpInput.value = '';
+                    if (startDateInput) startDateInput.value = '';
+                    if (endDateInput) endDateInput.value = '';
+                    if (tabContent) tabContent.style.display = '';
+                }
+            }
+
+            on(orderTypeSelect, 'change', toggleTable);
+            on(reservedCheckbox, 'change', toggleReservedUI);
+
+            toggleTable();
+            toggleReservedUI();
+
+            /* =========================================================
+             * SUBMIT VALIDATION
+             * ========================================================= */
+            on(form, 'submit', function(e) {
+
+                const isReserved = reservedCheckbox && reservedCheckbox.checked;
+
+                // 🔴 Jika reserved → meja wajib
+                if (isReserved) {
+                    if (!tableSelect || !tableSelect.value) {
+                        e.preventDefault();
+                        alert('Jika Reserved, silakan pilih meja.');
+                        return;
+                    }
+                }
+
+                // 🔴 Jika reserved → DP wajib
+                if (isReserved) {
+                    if (!dpInput || !dpInput.value) {
+                        e.preventDefault();
+                        alert('Nominal DP wajib diisi.');
+                        return;
+                    }
+                }
+
+                // 🔴 Jika reserved → tanggal wajib
+                if (isReserved) {
+                    if (!startDateInput || !startDateInput.value) {
+                        e.preventDefault();
+                        alert('Start Date wajib diisi.');
+                        return;
                     }
 
-                    document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const id = this.dataset.id;
-                            const name = this.dataset.name;
-                            const price = parseFloat(this.dataset.price) || 0;
-
-                            let item = cart.find(c => c.menu_item_id === id);
-                            if (item) {
-                                item.qty += 1;
-                            } else {
-                                cart.push({
-                                    menu_item_id: id,
-                                    name: name,
-                                    price: price,
-                                    qty: 1,
-                                });
-                            }
-                            renderCart();
-                        });
-                    });
-
-                    cartTableBody.addEventListener('input', function(e) {
-                        if (e.target.classList.contains('qty-input')) {
-                            const index = e.target.dataset.index;
-                            const qty = parseInt(e.target.value) || 1;
-                            cart[index].qty = qty;
-                            renderCart();
-                        }
-                    });
-
-                    cartTableBody.addEventListener('click', function(e) {
-                        if (e.target.classList.contains('remove-item-btn')) {
-                            const index = e.target.dataset.index;
-                            cart.splice(index, 1);
-                            renderCart();
-                        }
-                    });
-
-                    promotionSelect.addEventListener('change', renderCart);
-
-                    const orderTypeSelect = document.getElementById('order_type');
-                    const tableWrapper = document.getElementById('table-wrapper');
-
-                    // validasi meja
-                    const tableSelect = document.getElementById('table_id');
-                    const selectedOption = tableSelect.options[tableSelect.selectedIndex];
-                    
-
-                    function toggleTable() {
-                        if (orderTypeSelect.value === 'dine_in') {
-                            tableWrapper.style.display = '';
-                        } else {
-                            tableWrapper.style.display = 'none';
-                        }
+                    if (!endDateInput || !endDateInput.value) {
+                        e.preventDefault();
+                        alert('End Date wajib diisi.');
+                        return;
                     }
-                    orderTypeSelect.addEventListener('change', toggleTable);
-                    toggleTable();
 
-                    document.getElementById('pos-form').addEventListener('submit', function(e) {
-                        if (selectedOption && selectedOption.dataset.status === 'reserved') {
-                            e.preventDefault();
-                            alert('Meja yang dipilih sedang reserved.');
-                            return false;
-                        }
-                        else if (cart.length === 0) {
-                            e.preventDefault();
-                            alert('Keranjang masih kosong.');
-                            return;
-                        }
-                        else {
-                            tableWrapper.style.display = 'none';
-                        }
+                    if (new Date(endDateInput.value) <= new Date(startDateInput.value)) {
+                        e.preventDefault();
+                        alert('End Date harus lebih besar dari Start Date.');
+                        return;
+                    }
+                }
 
-                        document.querySelectorAll('.cart-hidden-input').forEach(el => el.remove());
+                // 🔴 Jika bukan reserved → cart wajib
+                if (!isReserved && cart.length === 0) {
+                    e.preventDefault();
+                    alert('Keranjang masih kosong.');
+                    return;
+                }
 
-                        cart.forEach((item, index) => {
-                            ['menu_item_id', 'name', 'qty', 'price'].forEach(field => {
-                                const input = document.createElement('input');
-                                input.type = 'hidden';
-                                input.name = `cart[${index}][${field}]`;
-                                input.value = item[field];
-                                input.classList.add('cart-hidden-input');
-                                document.getElementById('pos-form').appendChild(input);
-                            });
-                        });
+                // 🔴 Inject cart
+                document.querySelectorAll('.cart-hidden-input').forEach(el => el.remove());
+
+                cart.forEach((item, index) => {
+                    ['menu_item_id', 'name', 'qty', 'price'].forEach(field => {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = `cart[${index}][${field}]`;
+                        input.value = item[field];
+                        input.classList.add('cart-hidden-input');
+                        form.appendChild(input);
                     });
-                </script>
-            @endsection
+                });
+            });
+
+        });
+    </script>
+
+
+@endsection

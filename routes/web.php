@@ -117,12 +117,23 @@ Route::middleware('auth')->group(function () {
             ->name('kasir.dashboard.items');
 
         // POS / Order
+
+        Route::put('kasir/orders/{order}/reserved',[OrderController::class, 'updateReserved'])
+            ->name('kasir.orders.updateReserved');
+
         Route::resource('kasir/orders', OrderController::class)
             ->names('kasir.orders');
+
 
         // Bayar order (open → paid)
         Route::post('kasir/orders/{order}/pay', [OrderController::class, 'pay'])
             ->name('kasir.orders.pay');
+
+        Route::get('/kasir/orders/{order}/print',[OrderController::class, 'print'])
+            ->name('kasir.orders.print');
+
+        Route::get('/kasir/orders/{order}/after-pay',[OrderController::class, 'afterPay'])
+            ->name('kasir.orders.afterPay');
 
         // Status meja
         Route::get('kasir/tables', [TableStatusController::class, 'index'])

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CafeTable;
 use App\Models\Outlet;
+use App\Models\OrderItem;
 use Illuminate\Http\Request;
 
 class TableController extends Controller
@@ -97,14 +98,32 @@ class TableController extends Controller
             ->with('success', 'Meja berhasil diupdate.');
     }
 
+    // public function destroy(CafeTable $table)
+    // {
+    //     // opsional: cek apakah meja sedang punya order aktif
+    //     // if ($table->orders()->where('status', 'open')->exists()) { ... }
+
+    //     $table->delete();
+
+    //     return redirect()->route('admin.tables.index')
+    //         ->with('success', 'Meja berhasil dihapus.');
+    // }
+
     public function destroy(CafeTable $table)
     {
-        // opsional: cek apakah meja sedang punya order aktif
-        // if ($table->orders()->where('status', 'open')->exists()) { ... }
+        $used = OrderItem::where('cafe_tables_id', $table->id)->exists();
+       
 
-        $table->delete();
+        if ($used) {
+            return redirect()
+                ->route('admin.tables.index')
+                ->with('error', 'Meja tidak bisa dihapus karena sudah digunakan di transaksi.');
+        }
 
-        return redirect()->route('admin.tables.index')
+        $menu->delete();
+
+        return redirect()
+            ->route('admin.tables.index')
             ->with('success', 'Meja berhasil dihapus.');
     }
 }

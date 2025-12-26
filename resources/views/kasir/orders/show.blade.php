@@ -4,13 +4,31 @@
 
 @section('content')
 
-
-
 @php
-    // Pakai nilai dari DB; kalau null baru dihitung dari items
+    /*
+    |--------------------------------------------------------------------------
+    | HITUNG NILAI DASAR (DARI DB)
+    |--------------------------------------------------------------------------
+    */
     $subtotal      = $order->subtotal ?? $order->items->sum('total');
     $discountTotal = $order->discount_total ?? 0;
-    $grandTotal    = $order->grand_total ?? ($subtotal - $discountTotal);
+    $grandTotalDb  = $order->grand_total ?? ($subtotal - $discountTotal);
+
+    /*
+    |--------------------------------------------------------------------------
+    | DP (HANYA JIKA RESERVED)
+    |--------------------------------------------------------------------------
+    */
+    $dp = $order->reserved?->total_dp ?? 0;
+
+    /*
+    |--------------------------------------------------------------------------
+    | TOTAL YANG HARUS DIBAYAR
+    |--------------------------------------------------------------------------
+    */
+    $grandTotalPayable = $order->reserved
+        ? max(0, $grandTotalDb - $dp)
+        : $grandTotalDb;
 @endphp
 
 <div class="card mb-3">
@@ -20,6 +38,7 @@
                 <h4 class="mb-3">Detail Order #{{ $order->order_code }}</h4>
             </div>
         </div>
+
         <div class="row mb-2">
             <div class="col-md-4">
                 <strong>Outlet</strong><br>
@@ -49,11 +68,7 @@
             </div>
             <div class="col-md-4">
                 <strong>Meja</strong><br>
-                @if($order->table)
-                    {{ $order->table->name }} ({{ $order->table->status }})
-                @else
-                    -
-                @endif
+                {{ $order->table?->name ?? '-' }}
             </div>
         </div>
 
@@ -68,9 +83,15 @@
             </div>
             <div class="col-md-4">
                 <strong>Jumlah Dibayar</strong><br>
-                {{ isset($order->paid_amount) ? rupiah($order->paid_amount) : '-' }}
+                {{ $order->paid_amount !== null ? rupiah($order->paid_amount) : '-' }}
             </div>
         </div>
+
+        @if($order->reserved)
+            <div class="alert alert-warning py-2 mt-2">
+                Order ini memiliki <strong>DP sebesar {{ rupiah($dp) }}</strong>
+            </div>
+        @endif
     </div>
 </div>
 
@@ -108,66 +129,87 @@
             </table>
         </div>
     </div>
+
     <div class="card-footer">
         <div class="d-flex justify-content-between mb-1">
             <span>Subtotal</span>
             <span>{{ rupiah($subtotal) }}</span>
         </div>
+
         <div class="d-flex justify-content-between mb-1">
             <span>Diskon</span>
             <span>{{ rupiah($discountTotal) }}</span>
         </div>
+
+        @if($order->reserved)
+            <div class="d-flex justify-content-between mb-1 text-danger">
+                <span>DP</span>
+                <span>- {{ rupiah($dp) }}</span>
+            </div>
+        @endif
+
         <hr class="my-2">
+
         <div class="d-flex justify-content-between">
             <strong>Grand Total</strong>
-            <strong>{{ rupiah($grandTotal) }}</strong>
+            <strong>{{ rupiah($grandTotalPayable) }}</strong>
         </div>
     </div>
 </div>
 
-{{-- Form pembayaran (kalau masih OPEN / UNPAID) --}}
+{{-- FORM PEMBAYARAN --}}
 @if($order->status === 'open')
     <div class="card">
         <div class="card-header">
             <strong>Pembayaran</strong>
         </div>
         <div class="card-body">
-            <form action="{{ route('kasir.orders.pay', $order) }}" method="POST" class="row g-2">
-                @csrf
-                <div class="col-md-3">
-                    <label class="form-label">Metode</label>
-                    <select name="payment_method"  class="form-select" required>
-                        <option value="cash">Cash</option>
-                        <option value="qris">QRIS</option>
-                    </select>
-                    {{-- <input type="text" name="payment_method" class="form-control"
-                        value="cash" readonly> --}}
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Jumlah Bayar</label>
-                    <input type="text" class="form-control"
-                        value="{{ rupiah($grandTotal) }}" disabled>
+            @if($order->payment_status !="paid")
+                <form action="{{ route('kasir.orders.pay', $order) }}" method="POST" class="row g-2">
+                    @csrf
+                    <input type="hidden" name="is_reserved"
+                            value="{{ $order->table?->status ?? '-' }}">
+                    <div class="col-md-2">
+                        <label class="form-label">Metode</label>
+                        <select name="payment_method" class="form-select" required>
+                            <option value="cash">Cash</option>
+                            <option value="qris">QRIS</option>
+                        </select>
+                    </div>
 
-                    <input type="hidden" name="paid_amount"
-                        value="{{ $grandTotal }}">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">No. Referensi (opsional)</label>
-                    <input type="text" name="reference_no" readonly class="form-control"
-                           placeholder="No. transaksi bank / QRIS">
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button class="btn btn-success w-100">
-                        Tandai Lunas
-                    </button>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <a href="{{ route('kasir.orders.index') }}" class="btn btn-secondary">
-                        Simpan 
-                    </a>
-                </div>
-            </form>
+                    <div class="col-md-2">
+                        <label class="form-label">Jumlah Bayar</label>
+                        <input type="text" class="form-control"
+                            value="{{ rupiah($grandTotalPayable) }}" disabled>
+
+                        <input type="hidden" name="paid_amount"
+                            value="{{ $grandTotalPayable }}">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">No. Referensi (opsional)</label>
+                        <input type="text" name="reference_no" class="form-control"
+                            placeholder="No. transaksi bank / QRIS">
+                    </div>
+
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-success w-100">
+                            Tandai Lunas
+                        </button>
+                    </div>
+
+                    <div class="col-md-2 d-flex align-items-end">
+                       <a href="{{ route('kasir.orders.print', $order) }}"
+                            target="_blank"
+                            class="btn btn-primary">
+                            Cetak Struk
+                        </a>
+                    </div>
+                    
+                </form>
+            @endif
         </div>
     </div>
 @endif
+
 @endsection

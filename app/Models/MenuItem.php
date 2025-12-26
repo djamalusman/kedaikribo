@@ -41,4 +41,9 @@ class MenuItem extends Model
             'promotion_id'
         )->withTimestamps();
     }
+
+    public function stockmovment(): BelongsTo
+    {
+        return $this->belongsTo(StockMovement::class);
+    }
 }

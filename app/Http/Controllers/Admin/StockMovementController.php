@@ -72,43 +72,26 @@ class StockMovementController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Validasi input dasar
         $data = $request->validate([
-            'ingredient_id' => 'required|exists:ingredients,id',
-            'outlet_id'     => 'required|exists:outlets,id',
-            'movement_type' => 'required|in:in,out',
-            'qty'           => 'required|numeric|min:0.001',
-            'reference_type'=> 'nullable|string|max:50',
-            'reference_no'  => 'nullable|string|max:100',
-            'description'   => 'nullable|string',
+            'outlet_id'      => 'required|exists:outlets,id',
+            'movement_type'  => 'required|in:in',
+            'qty'            => 'required|numeric|min:0',
+            'purchase_price' => 'required|numeric|min:0.001',
+            'satuan'         => 'nullable|string|max:50',
+            'namestock'      => 'nullable|string|max:50',
+            'description'    => 'nullable|string',
+            'created_at'     => 'required|date',
         ]);
 
-        // 2. Ambil ingredient dan cek outlet-nya
-        $ingredient = Ingredient::findOrFail($data['ingredient_id']);
-
-        // Jika outlet di form tidak sama dengan outlet di ingredient → error
-        if ((int) $ingredient->outlet_id !== (int) $data['outlet_id']) {
-            return back()
-                ->withErrors([
-                    'outlet_id' => 'Outlet yang dipilih tidak sesuai dengan outlet pemilik bahan baku: '
-                        . $ingredient->name . '.',
-                ])
-                ->withInput();
-        }
-
-        // 3. Simpan movement + update stok dalam transaksi DB
         DB::transaction(function () use ($data) {
-            /** @var \App\Models\StockMovement $movement */
-            $movement = StockMovement::create($data);
-
-            // Terapkan ke stok ingredient (IN = tambah, OUT = kurang)
-            $movement->applyToIngredient();
+            StockMovement::create($data);
         });
 
         return redirect()
             ->route('admin.stock-movements.index')
             ->with('success', 'Pergerakan stok berhasil dicatat.');
     }
+
 
     public function edit(StockMovement $stock_movement)
     {
@@ -122,48 +105,28 @@ class StockMovementController extends Controller
         ]);
     }
 
-    public function update(Request $request, StockMovement $stock_movement)
+   public function update(Request $request, StockMovement $stock_movement)
     {
-        // 1. Validasi input dasar
         $data = $request->validate([
-            'ingredient_id' => 'required|exists:ingredients,id',
-            'outlet_id'     => 'required|exists:outlets,id',
-            'movement_type' => 'required|in:in,out',
-            'qty'           => 'required|numeric|min:0.001',
-            'reference_type'=> 'nullable|string|max:50',
-            'reference_no'  => 'nullable|string|max:100',
-            'description'   => 'nullable|string',
+            'outlet_id'      => 'required|exists:outlets,id',
+            'movement_type'  => 'required|in:in',
+            'qty'            => 'required|numeric|min:0',
+            'purchase_price' => 'required|numeric|min:0.001',
+            'satuan'         => 'nullable|string|max:50',
+            'namestock'      => 'nullable|string|max:50',
+            'description'    => 'nullable|string',
+            'created_at'     => 'required|date',
         ]);
 
-        // 2. Ambil ingredient dan cek outlet-nya
-        $ingredient = Ingredient::findOrFail($data['ingredient_id']);
-
-        if ((int) $ingredient->outlet_id !== (int) $data['outlet_id']) {
-            return back()
-                ->withErrors([
-                    'outlet_id' => 'Outlet yang dipilih tidak sesuai dengan outlet pemilik bahan baku: '
-                        . $ingredient->name . '.',
-                ])
-                ->withInput();
-        }
-
-        // 3. Koreksi stok lama, lalu terapkan stok baru dalam transaksi
         DB::transaction(function () use ($stock_movement, $data) {
-            // Balik efek movement lama dari stok
-            $stock_movement->revertFromIngredient();
-
-            // Update movement
             $stock_movement->update($data);
-
-            // Terapkan efek movement baru
-            $stock_movement->refresh();
-            $stock_movement->applyToIngredient();
         });
 
         return redirect()
             ->route('admin.stock-movements.index')
             ->with('success', 'Pergerakan stok berhasil diupdate.');
     }
+
 
 
     public function destroy(StockMovement $stock_movement)
