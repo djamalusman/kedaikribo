@@ -37,15 +37,15 @@
     </div>
 
     <div class="col-md-3">
-        <label class="form-label">Status</label>
+        <label class="form-label">Status Meja</label>
         @php
             $currentStatus = old('status', $table->status ?? 'available');
         @endphp
         <select name="status" class="form-select" required>
-            <option value="available" @selected($currentStatus === 'available')>Available</option>
-            <option value="occupied"  @selected($currentStatus === 'occupied')>Occupied</option>
-            <option value="reserved"  @selected($currentStatus === 'reserved')>Reserved</option>
-            <option value="inactive"  @selected($currentStatus === 'inactive')>Inactive</option>
+            <option  value="available" @selected($currentStatus === 'available')>Available</option>
+            <option hidden value="occupied"  @selected($currentStatus === 'occupied')>Occupied</option>
+            <option hidden value="reserved"  @selected($currentStatus === 'reserved')>Reserved</option>
+            <option hidden value="inactive"  @selected($currentStatus === 'inactive')>Inactive</option>
         </select>
     </div>
 </div>

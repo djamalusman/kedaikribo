@@ -73,7 +73,9 @@ Route::middleware('auth')->group(function () {
             Route::get('/dashboard/{order}/items', [AdminDashboardController::class, 'items'])
             ->name('dashboard.items');
 
-
+            Route::get('dashboard/{order}/detail', 
+                [AdminDashboardController::class, 'show']
+            )->name('dashboard.show');
             // MENU (sudah ada)
             Route::resource('menu', AdminMenuController::class);
             Route::get('menu/next-code', [AdminMenuController::class, 'nextCode'])
@@ -104,6 +106,10 @@ Route::middleware('auth')->group(function () {
 
             Route::resource('/promotions', PromotionController::class)
                 ->names('promotions');
+
+            Route::get('/dashboard/export-excel', [AdminDashboardController::class, 'exportExcel'])
+                ->name('dashboard.export.excel');
+
         });
 
 

@@ -935,6 +935,11 @@ class OrderController extends Controller
                         $stock->update([
                             'qty' => $sisaQty
                         ]);
+
+                        if ($table) {
+                            $table->status = 'occupied';
+                            $table->save();
+                        }
                     }
                 }
             }
