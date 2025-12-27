@@ -28,4 +28,25 @@ class TableStatusController extends Controller
             'status' => $status,
         ]);
     }
+
+    public function updateStatus(Request $request)
+    {
+       
+        $data = $request->validate([
+            'table_id' => 'required|exists:cafe_tables,id',
+            'status'   => 'required|in:available,reserved',
+        ]);
+
+        CafeTable::where('id', $data['table_id'])
+            ->update([
+                'status' => $data['status'],
+                'updated_at' => now(),
+            ]);
+
+        return response()->json([
+            'message' => 'Status meja berhasil diperbarui'
+        ]);
+        
+    }
+
 }

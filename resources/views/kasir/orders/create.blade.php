@@ -57,7 +57,11 @@
                             </select>
                         </div>
                         <div class="col-md-4" id="table-wrapper">
-                            <label class="form-label">Meja (untuk Dine In)</label>
+                            <label class="form-label">Meja (untuk Dine In) &nbsp;&nbsp;
+                                <button type="button" class="btn btn-sm btn-warning" data-bs-toggle="modal"
+                                    data-bs-target="#inlineForm">
+                                    Update Status Meja
+                                </button></label>
                             <select name="table_id" class="form-select" id="table_id">
                                 <option value="">Pilih Meja</option>
                                 @foreach ($tables as $t)
@@ -74,7 +78,6 @@
                                 </label>
                             </div>
                         </div>
-
                         <div class="col-md-4">
                             <label class="form-label">Promo</label>
                             <select name="promotion_id" id="promotion_id" class="form-select">
@@ -103,6 +106,52 @@
                         <div class="col-md-4">
                             <label class="form-label">End Date</label>
                             <input type="datetime-local" name="end_date" class="form-control">
+                        </div>
+                    </div>
+
+
+                    <!--Basic Modal -->
+                    <div class="modal fade" id="inlineForm" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+
+                                <div class="modal-header">
+                                    <h4 class="modal-title">Update Status Meja</h4>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+
+                                <div class="modal-body">
+
+                                    <label>Meja</label>
+                                    <select id="table_id_update" class="form-select">
+                                        <option value="">Pilih Meja</option>
+
+                                        @foreach ($tables as $t)
+                                            @if ($t->status === 'occupied')
+                                                <option value="{{ $t->id }}" data-status="{{ $t->status }}">
+                                                    {{ $t->name }} ({{ $t->status }})
+                                                </option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+
+
+                                    <label class="mt-2">Status</label>
+                                    <select id="table_status_update" class="form-select">
+                                        <option value="">Pilih Status</option>
+                                        <option value="available">Available</option>
+                                    </select>
+
+                                </div>
+
+                                <div class="modal-footer">
+                                    <button class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                                    <button class="btn btn-primary" id="btnUpdateTableStatus">
+                                        Update
+                                    </button>
+                                </div>
+
+                            </div>
                         </div>
                     </div>
 
@@ -473,6 +522,78 @@
 
         });
     </script>
+
+    <script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    document.getElementById('btnUpdateTableStatus')
+        .addEventListener('click', async function (e) {
+
+        e.preventDefault();
+
+        const tableId = document.getElementById('table_id_update').value;
+        const status  = document.getElementById('table_status_update').value;
+
+        if (!tableId || !status) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Data belum lengkap',
+                text: 'Meja dan status wajib dipilih'
+            });
+            return;
+        }
+
+        try {
+            const res = await fetch("{{ route('kasir.tables.updateStatus') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('input[name=_token]').value
+                },
+                body: JSON.stringify({
+                    table_id: tableId,
+                    status: status
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.message || 'Gagal memperbarui status meja');
+            }
+
+            // ✅ SUCCESS
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: data.message || 'Status meja berhasil diperbarui',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            // tutup modal
+            const modalEl = document.getElementById('inlineForm');
+            bootstrap.Modal.getInstance(modalEl).hide();
+
+            // reload halaman (opsional)
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+
+        } catch (err) {
+
+            // ❌ ERROR
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: err.message
+            });
+        }
+    });
+
+});
+</script>
+
 
 
 @endsection

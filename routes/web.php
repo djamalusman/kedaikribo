@@ -139,6 +139,10 @@ Route::middleware('auth')->group(function () {
         Route::get('kasir/tables', [TableStatusController::class, 'index'])
             ->name('kasir.tables.index');
 
+        Route::post('/tables/update-status', [TableStatusController::class, 'updateStatus'])
+            ->name('kasir.tables.updateStatus');
+
+
         // Customer & Loyalty
         Route::get('kasir/customers', [CustomerController::class, 'index'])
             ->name('kasir.customers.index');
