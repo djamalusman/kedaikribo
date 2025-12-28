@@ -199,6 +199,11 @@
                             class="d-none">
                             @csrf
                         </form>
+                        <li class="sidebar-item  ">
+                            <a href="#" class="btn btn-warning">Kedai Kribo Version 1.0</a>
+                        </li>
+                        <br>
+                        <br>
                     </ul>
 
                 </div>
