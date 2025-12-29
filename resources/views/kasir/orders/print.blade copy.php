@@ -4,46 +4,53 @@
     <meta charset="utf-8">
     <title>Struk {{ $order->order_code }}</title>
 
-   <style>
-    @page {
-        margin: 5px;
-    }
+    <style>
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 11px;
+            color: #000;
+            position: relative;
+        }
 
-    body {
-        font-family: monospace;
-        font-size: 11px;
-        color: #000;
-    }
+        .center { text-align: center; }
+        .right  { text-align: right; }
+        .mb     { margin-bottom: 6px; }
 
-    .center {
-        text-align: center;
-    }
+        hr {
+            border: none;
+            border-top: 1px dashed #000;
+            margin: 6px 0;
+        }
 
-    .right {
-        text-align: right;
-    }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-    .mb {
-        margin-bottom: 6px;
-    }
+        td {
+            padding: 2px 0;
+            vertical-align: top;
+        }
 
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    td {
-        padding: 2px 0;
-        vertical-align: top;
-    }
-
-    hr {
-        border: none;
-        border-top: 1px dashed #000;
-        margin: 6px 0;
-    }
-</style>
-
+        /* ================= STEMPEL LUNAS ================= */
+        /* .stamp-lunas {
+            position: absolute;
+            top: 210px; /* area item list */
+            left: 50%;
+            transform: translateX(-50%) rotate(-20deg);
+            border: 6px double #c00;
+            color: #c00;
+            padding: 20px 60px;
+            font-size: 48px;
+            font-weight: 900;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            opacity: 0.25;
+            z-index: 30;
+            border-radius: 10px;
+            text-align: center;
+        } */
+    </style>
 </head>
 
 <body>
@@ -135,26 +142,6 @@
     === TERIMA KASIH ===<br>
     Selamat Menikmati 🙏
 </div>
-<script>
-(function () {
-    function doPrint() {
-        window.focus();
-        window.print();
-    }
-
-    // Desktop Chrome
-    window.addEventListener('load', function () {
-        setTimeout(doPrint, 300);
-    });
-
-    // Android / Tablet Chrome (lebih sensitif)
-    document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') {
-            setTimeout(doPrint, 300);
-        }
-    });
-})();
-</script>
 
 </body>
 </html>

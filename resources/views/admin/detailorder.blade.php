@@ -164,7 +164,7 @@
             <strong>Pembayaran</strong>
         </div>
         <div class="card-body">
-            @if($order->payment_status !="paid" && $user->role != 2)
+            @if($order->payment_status !="paid")
                 <form action="{{ route('kasir.orders.pay', $order) }}" method="POST" class="row g-2">
                     @csrf
                     <input type="hidden" name="is_reserved"

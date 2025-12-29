@@ -946,15 +946,39 @@ class OrderController extends Controller
 
         });
 
-        return redirect()
-        ->route('kasir.orders.index', $order)
-        ->with('success', 'Pembayaran berhasil. Struk dicetak.');
+        // return redirect()
+        // ->route('kasir.orders.index', $order)
+        // ->with('success', 'Pembayaran berhasil. Struk dicetak.');
+          return response()->json([
+            'success'    => true,
+            'print_url' => route('kasir.orders.print', $order),
+        ]);
     }
 
     public function afterPay(Order $order)
     {
         return view('kasir.orders.after_pay', compact('order'));
     }
+
+    // public function print(Order $order)
+    // {
+    //     $this->authorizeOrderForKasir($order);
+
+    //     $order->load([
+    //         'items.menuItem',
+    //         'customer',
+    //         'table',
+    //         'promotion',
+    //         'reserved',
+    //         'outlet',
+    //     ]);
+
+    //     $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
+    //         ->setPaper('A4', 'portrait');
+
+    //     return $pdf->stream('struk-'.$order->order_code.'.pdf');
+    // }
+
 
     public function print(Order $order)
     {
@@ -969,11 +993,17 @@ class OrderController extends Controller
             'outlet',
         ]);
 
+        // ukuran thermal (dalam point)
+        // 1 mm ≈ 2.83465 point
+        // 58mm  ≈ 164 pt
+        // 80mm  ≈ 227 pt
+        $paperWidth = 164; // 👉 164 untuk 58mm | 227 untuk 80mm
+        $paperHeight = 305; // fleksibel (auto panjang)
+
         $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
-            ->setPaper('A4', 'portrait');
+            ->setPaper([0, 0, $paperWidth, $paperHeight]);
 
         return $pdf->stream('struk-'.$order->order_code.'.pdf');
     }
-
     
 }

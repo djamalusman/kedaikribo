@@ -165,10 +165,12 @@
         </div>
         <div class="card-body">
             @if($order->payment_status !="paid")
-                <form action="{{ route('kasir.orders.pay', $order) }}" method="POST" class="row g-2">
+                <form id="pay-form" class="row g-2">
                     @csrf
+
                     <input type="hidden" name="is_reserved"
-                            value="{{ $order->table?->status ?? '-' }}">
+                        value="{{ $order->table?->status ?? '-' }}">
+
                     <div class="col-md-2">
                         <label class="form-label">Metode</label>
                         <select name="payment_method" class="form-select" required>
@@ -179,8 +181,10 @@
 
                     <div class="col-md-2">
                         <label class="form-label">Jumlah Bayar</label>
-                        <input type="text" class="form-control"
-                            value="{{ rupiah($grandTotalPayable) }}" disabled>
+                        <input type="text"
+                            class="form-control"
+                            value="{{ rupiah($grandTotalPayable) }}"
+                            disabled>
 
                         <input type="hidden" name="paid_amount"
                             value="{{ $grandTotalPayable }}">
@@ -188,28 +192,84 @@
 
                     <div class="col-md-3">
                         <label class="form-label">No. Referensi (opsional)</label>
-                        <input type="text" name="reference_no" class="form-control"
+                        <input type="text"
+                            name="reference_no"
+                            class="form-control"
                             placeholder="No. transaksi bank / QRIS">
                     </div>
 
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button class="btn btn-success w-100">
-                            Tandai Lunas
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit"
+                            id="btn-pay"
+                            class="btn btn-success w-100">
+                            Tandai Lunas & Cetak
                         </button>
                     </div>
-
-                    <div class="col-md-2 d-flex align-items-end">
-                       <a href="{{ route('kasir.orders.print', $order) }}"
-                            target="_blank"
-                            class="btn btn-primary">
-                            Cetak Struk
-                        </a>
-                    </div>
-                    
                 </form>
+
             @endif
         </div>
     </div>
 @endif
+
+@endsection
+@section('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const form = document.getElementById('pay-form');
+    if (!form) return; // ⛔ kalau form tidak ada, stop
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('btn-pay');
+        btn.disabled = true;
+        btn.innerText = 'Memproses...';
+
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch(
+                "{{ route('kasir.orders.pay', $order) }}",
+                {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                }
+            );
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error(text);
+                throw new Error('Server tidak mengembalikan JSON');
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Pembayaran gagal');
+            }
+
+            window.open(data.print_url, '_blank');
+
+            setTimeout(() => {
+                window.location.href = "{{ route('kasir.orders.index') }}";
+            }, 1200);
+
+        } catch (err) {
+            alert(err.message);
+            btn.disabled = false;
+            btn.innerText = 'Tandai Lunas & Cetak';
+        }
+    });
+
+});
+</script>
+
 
 @endsection
