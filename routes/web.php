@@ -138,6 +138,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/kasir/orders/{order}/print',[OrderController::class, 'print'])
             ->name('kasir.orders.print');
 
+        Route::get('/kasir/orders/{order}/printindex',[OrderController::class, 'printIndex'])
+            ->name('kasir.orders.printindex');
+
         Route::get('/kasir/orders/{order}/after-pay',[OrderController::class, 'afterPay'])
             ->name('kasir.orders.afterPay');
 

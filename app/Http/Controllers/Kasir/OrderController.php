@@ -1086,5 +1086,51 @@ class OrderController extends Controller
         return $pdf->stream('struk-'.$order->order_code.'.pdf');
     }
 
+    public function printIndex(Order $order)
+    {
+        $order->load([
+            'items.menuItem',
+            'customer',
+            'table',
+            'promotion',
+            'reserved',
+            'outlet',
+        ]);
+
+        // ================= WIDTH =================
+        $paperWidth = 164; // 58mm
+
+        // ================= HEIGHT =================
+        $baseHeight = 180; // header + logo + footer
+        $lineHeight = 16;  // tinggi 1 baris teks
+
+        $lines = 0;
+
+        foreach ($order->items as $item) {
+            // nama menu bisa 1–2 baris
+            $nameLines = ceil(strlen($item->menuItem->name) / 18);
+            $lines += max(1, $nameLines);
+        }
+
+        // subtotal, diskon, total, metode
+        $lines += 8;
+
+        $paperHeight = $baseHeight + ($lines * $lineHeight);
+
+        // safety net 🔥
+        if ($paperHeight < 400) {
+            $paperHeight = 400;
+        }
+
+        $pdf = Pdf::loadView('kasir.orders.printindex', compact('order'))
+            ->setPaper([0, 0, $paperWidth, $paperHeight]);
+
+        return $pdf->stream('struk-'.$order->order_code.'.pdf');
+    }
+
+
+
+
+
     
 }
