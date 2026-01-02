@@ -242,8 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.disabled = true;
         btn.innerText = 'Memproses...';
 
-        const formData = new FormData(form);
-
         try {
             const response = await fetch(
                 "{{ route('kasir.orders.pay', $order->id) }}",
@@ -253,27 +251,34 @@ document.addEventListener('DOMContentLoaded', () => {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
                         'Accept': 'application/json'
                     },
-                    body: formData
+                    body: new FormData(form)
                 }
             );
 
-            const data = await response.json();
-
-            if (!data.success) {
-                throw new Error(data.message || 'Pembayaran gagal');
+            if (!response.ok) {
+                throw new Error('Server error');
             }
 
-            const data = await res.json();
+            // 🔥 SATU KALI SAJA
+            const result = await response.json();
 
-            if (window.AndroidPrinter && data.print_text) {
-                AndroidPrinter.print(data.print_text);
+            if (!result.success) {
+                throw new Error(result.message || 'Pembayaran gagal');
             }
 
+            // 🔥 ANDROID WEBVIEW (THERMAL)
+            if (window.AndroidPrinter && result.print_text) {
+                AndroidPrinter.print(result.print_text);
+            }
+            // 🔁 FALLBACK DESKTOP
+            else if (result.print_url) {
+                window.open(result.print_url, '_blank');
+            }
 
             btn.innerText = 'Berhasil';
 
         } catch (err) {
-            alert(err.message);
+            alert(err.message || 'Terjadi kesalahan');
             btn.disabled = false;
             btn.innerText = 'Tandai Lunas & Cetak';
         }
