@@ -215,6 +215,20 @@
 @endsection
 @section('scripts')
 <script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    setTimeout(() => {
+        if (window.AndroidPrinter) {
+            alert("✅ ANDROID WEBVIEW TERDETEKSI");
+        } else {
+            alert("❌ BUKAN ANDROID WEBVIEW");
+        }
+    }, 1000);
+
+});
+</script>
+
+<script>
 document.addEventListener('DOMContentLoaded', () => {
 
     const form = document.getElementById('pay-form');
@@ -249,19 +263,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data.message || 'Pembayaran gagal');
             }
 
-            // ================================
-            // 🔥 MODE ANDROID WEBVIEW
-            // ================================
+            const data = await res.json();
+
             if (window.AndroidPrinter && data.print_text) {
                 AndroidPrinter.print(data.print_text);
             }
 
-            // ================================
-            // 🔥 MODE DESKTOP
-            // ================================
-            else if (data.print_url) {
-                window.open(data.print_url, '_blank');
-            }
 
             btn.innerText = 'Berhasil';
 

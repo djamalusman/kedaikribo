@@ -996,15 +996,17 @@ class OrderController extends Controller
         ]);
     });
 
-    return response()->json([
-        'success'    => true,
+    
+    $printText = view(
+            'kasir.orders.print-text',
+            compact('order')
+        )->render();
 
-        // 🔥 UNTUK WEBVIEW ANDROID
-        'print_text' => $printText,
+        return response()->json([
+            'success' => true,
+            'print_text' => $printText
+        ]);
 
-        // 🔥 UNTUK DESKTOP (OPSIONAL)
-        'print_url'  => route('kasir.orders.print', $order),
-    ]);
 }
 
 
