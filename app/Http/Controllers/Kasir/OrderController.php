@@ -970,7 +970,7 @@ class OrderController extends Controller
         'reference_no'   => 'nullable|string|max:100',
         'is_reserved'    => 'nullable|string|max:100',
     ]);
-
+     $printText = '';
     DB::transaction(function () use ($order, $data) {
 
         $referenceNo = $data['reference_no'] ?: (
