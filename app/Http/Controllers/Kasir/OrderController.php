@@ -997,8 +997,13 @@ class OrderController extends Controller
     });
 
     return response()->json([
-        'success'   => true,
-        'print_url'=> route('kasir.orders.print', $order->id),
+        'success'    => true,
+
+        // 🔥 UNTUK WEBVIEW ANDROID
+        'print_text' => $printText,
+
+        // 🔥 UNTUK DESKTOP (OPSIONAL)
+        'print_url'  => route('kasir.orders.print', $order),
     ]);
 }
 

@@ -215,14 +215,14 @@
 @endsection
 @section('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
 
     const form = document.getElementById('pay-form');
     if (!form) return;
 
     const btn = document.getElementById('btn-pay');
 
-    form.addEventListener('submit', async function (e) {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         btn.disabled = true;
@@ -245,23 +245,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const data = await response.json();
 
-            if (!data.success || !data.print_url) {
+            if (!data.success) {
                 throw new Error(data.message || 'Pembayaran gagal');
             }
 
-            /**
-             * 🔥 OPEN NEW TAB
-             */
-            window.open(data.print_url, '_blank', 'noopener,noreferrer');
+            // ================================
+            // 🔥 MODE ANDROID WEBVIEW
+            // ================================
+            if (window.AndroidPrinter && data.print_text) {
+                AndroidPrinter.print(data.print_text);
+            }
 
-            /**
-             * 🔥 JANGAN redirect halaman kasir
-             * Kasir tetap di halaman ini
-             */
+            // ================================
+            // 🔥 MODE DESKTOP
+            // ================================
+            else if (data.print_url) {
+                window.open(data.print_url, '_blank');
+            }
+
             btn.innerText = 'Berhasil';
 
         } catch (err) {
-            alert(err.message || 'Terjadi kesalahan');
+            alert(err.message);
             btn.disabled = false;
             btn.innerText = 'Tandai Lunas & Cetak';
         }
@@ -269,5 +274,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
+@endsection
 
 @endsection
