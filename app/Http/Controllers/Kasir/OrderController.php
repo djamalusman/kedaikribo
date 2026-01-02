@@ -68,7 +68,7 @@ class OrderController extends Controller
             'to',
             'totalTransactions',
             'totalRevenue',
-            'activeTab'
+            'activeTab',
         ));
     }
 
@@ -854,7 +854,7 @@ class OrderController extends Controller
     public function pay(Request $request, Order $order)
     {
         
-        $this->authorizeOrderForKasir($order);
+        // $this->authorizeOrderForKasir($order);
 
         if ($order->payment_status === 'paid') {
             return redirect()->route('kasir.orders.show', $order)
@@ -982,8 +982,6 @@ class OrderController extends Controller
 
     public function print(Order $order)
     {
-        $this->authorizeOrderForKasir($order);
-
         $order->load([
             'items.menuItem',
             'customer',
@@ -991,19 +989,47 @@ class OrderController extends Controller
             'promotion',
             'reserved',
             'outlet',
+            'payments',
         ]);
 
-        // ukuran thermal (dalam point)
-        // 1 mm ≈ 2.83465 point
-        // 58mm  ≈ 164 pt
-        // 80mm  ≈ 227 pt
-        $paperWidth = 164; // 👉 164 untuk 58mm | 227 untuk 80mm
-        $paperHeight = 305; // fleksibel (auto panjang)
+        // ⚠️ PENTING
+        // JANGAN DomPDF
+        // HARUS HTML agar RawBT bisa menangkap print
+
+        return view('kasir.orders.print', compact('order'));
+    }
+
+
+    public function printPdf(Order $order)
+    {
+        $order->load([
+            'items.menuItem',
+            'customer',
+            'table',
+            'promotion',
+            'reserved',
+            'outlet',
+            'payments',
+        ]);
+
+        $paperWidth  = 164; // 58mm
+        $baseHeight  = 180;
+        $lineHeight  = 16;
+        $lines       = 0;
+
+        foreach ($order->items as $item) {
+            $nameLines = ceil(strlen($item->menuItem->name) / 18);
+            $lines += max(1, $nameLines);
+        }
+
+        $lines += 8;
+        $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
 
         $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
             ->setPaper([0, 0, $paperWidth, $paperHeight]);
 
         return $pdf->stream('struk-'.$order->order_code.'.pdf');
     }
+
     
 }

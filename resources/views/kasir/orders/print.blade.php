@@ -1,140 +1,176 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>Struk {{ $order->order_code }}</title>
+<meta charset="utf-8">
+<title>Struk {{ $order->order_code }}</title>
 
-   <style>
+<style>
+/* ================= RESET ================= */
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 58mm;
+    margin: 0;
+    padding: 0;
+    font-family: monospace;
+    font-size: 11px;
+    color: #000;
+}
+
+/* ================= PRINT ================= */
+@media print {
     @page {
-        margin: 5px;
+        size: 58mm auto;   /* panjang otomatis */
+        margin: 0;
     }
 
-    body {
-        font-family: monospace;
-        font-size: 11px;
-        color: #000;
+    html, body {
+        width: 58mm;
+        margin: 0;
+        padding: 0;
+        overflow: visible;
     }
+}
 
-    .center {
-        text-align: center;
-    }
+/* ================= HELPER ================= */
+.center { text-align: center; }
+.right  { text-align: right; }
+.mb     { margin-bottom: 6px; }
 
-    .right {
-        text-align: right;
-    }
+/* ================= TABLE ================= */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
 
-    .mb {
-        margin-bottom: 6px;
-    }
+td {
+    font-family: monospace;
+    font-size: 11px;
+    padding: 1px 0;
+    vertical-align: top;
+}
 
-    table {
-        width: 100%;
-        border-collapse: collapse;
-    }
+/* kolom kiri */
+td.name {
+    width: 70%;
+    word-wrap: break-word;
+}
 
-    td {
-        padding: 2px 0;
-        vertical-align: top;
-    }
+/* total harga */
+td.price {
+    width: 30%;
+    text-align: right;
+    white-space: nowrap;
+}
 
-    hr {
-        border: none;
-        border-top: 1px dashed #000;
-        margin: 6px 0;
-    }
+/* qty x harga */
+td.qty {
+    text-align: right;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
 </style>
-
 </head>
 
 <body>
 
-{{-- ================= STEMPEL LUNAS (HANYA JIKA SUDAH PAID) ================= --}}
-{{-- @if(strtolower($order->payment_status ?? '') === 'paid')
-    <div class="stamp-lunas">
-        LUNAS
-    </div>
-@endif --}}
-
 @php
-    // ================= HITUNG NILAI =================
-    $subtotal      = $order->subtotal;
-    $discountTotal = $order->discount_total ?? 0;
-    $grandTotalDb  = $order->grand_total;
-    $dp            = $order->reserved?->total_dp ?? 0;
-
-    // Sisa yang harus dibayar
-    $payable = $order->reserved
-        ? max(0, $grandTotalDb - $dp)
-        : $grandTotalDb;
+$subtotal = $order->subtotal;
+$discount = $order->discount_total ?? 0;
+$grand    = $order->grand_total;
+$dp       = $order->reserved?->total_dp ?? 0;
+$payable  = $order->reserved ? max(0, $grand - $dp) : $grand;
 @endphp
 
-{{-- ================= HEADER OUTLET ================= --}}
-<div class="center mb">
-    {{-- <strong>{{ $order->outlet->name ?? 'KEDAI KRIBO' }}</strong><br>
-    {{ $order->outlet->address ?? '' }} --}}
-     <img src="{{ public_path('assets/compiled/svg/logov1.png') }}" alt="Logo" width="120" height="110">
+<div id="receipt">
+
+    {{-- ================= HEADER ================= --}}
+    <div class="center mb">
+        <strong>{{ $order->outlet->name ?? 'KEDAI KRIBO' }}</strong><br>
+        =========================
+    </div>
+
+    {{-- ================= INFO ================= --}}
+    <div class="mb">
+        Order : {{ $order->order_code }}<br>
+        Tgl   : {{ $order->created_at->format('d/m/Y H:i') }}<br>
+        Kasir : {{ auth()->user()->name ?? '-' }}<br>
+        Cust  : {{ $order->customer->name ?? '-' }}
+    </div>
+
+    <hr>
+
+    {{-- ================= ITEM LIST (INI KUNCI) ================= --}}
+    <table>
+    @foreach($order->items as $item)
+
+        <!-- BARIS 1: Nama + Total -->
+        <tr>
+            <td class="name">
+                {{ $item->menuItem->name }}
+            </td>
+            <td class="price">
+                {{ rupiah($item->total) }}
+            </td>
+        </tr>
+
+        <!-- BARIS 2: Qty x Harga (kanan) -->
+        <tr>
+            <td></td>
+            <td class="qty">
+                {{ $item->qty }} x {{ rupiah($item->price) }}
+            </td>
+        </tr>
+
+    @endforeach
+    </table>
+
+
+    <hr>
+
+    {{-- ================= TOTAL ================= --}}
+    <table>
+        <tr>
+            <td>Subtotal</td>
+            <td class="price">{{ rupiah($subtotal) }}</td>
+        </tr>
+        <tr>
+            <td>Diskon</td>
+            <td class="price">- {{ rupiah($discount) }}</td>
+        </tr>
+
+        @if($order->reserved)
+        <tr>
+            <td>DP</td>
+            <td class="price">- {{ rupiah($dp) }}</td>
+        </tr>
+        @endif
+
+        <tr>
+            <td><strong>TOTAL</strong></td>
+            <td class="price"><strong>{{ rupiah($payable) }}</strong></td>
+        </tr>
+    </table>
+
+    <hr>
+
+    {{-- ================= PAYMENT ================= --}}
+    <div class="mb">
+        Metode : {{ strtoupper($order->payments->first()->payment_method ?? '-') }}
+    </div>
+
+    {{-- ================= FOOTER ================= --}}
+    <div class="center">
+        === TERIMA KASIH ===<br>
+        Selamat Menikmati
+    </div>
+
 </div>
 
-{{-- ================= INFO ORDER ================= --}}
-<div class="mb">
-    Order : {{ $order->order_code }}<br>
-    Tgl   : {{ $order->order_date?->format('d/m/Y H:i') }}<br>
-    Kasir : {{ auth()->user()->name ?? '-' }}<br>
-    Customer : {{ $order->customer->name ?? '-' }}
-</div>
-
-<hr>
-
-{{-- ================= ITEM LIST ================= --}}
-<table>
-@foreach($order->items as $item)
-<tr>
-    <td>{{ $item->menuItem->name }}</td>
-    <td class="right">{{ $item->qty }} x {{ rupiah($item->price) }}</td>
-    <td class="right">{{ rupiah($item->total) }}</td>
-</tr>
-@endforeach
-</table>
-
-<hr>
-
-{{-- ================= RINGKASAN TOTAL ================= --}}
-<table>
-<tr>
-    <td>Subtotal</td>
-    <td class="right">{{ rupiah($subtotal) }}</td>
-</tr>
-
-<tr>
-    <td>Diskon</td>
-    <td class="right">- {{ rupiah($discountTotal) }}</td>
-</tr>
-
-@if($order->reserved)
-<tr>
-    <td>DP</td>
-    <td class="right">- {{ rupiah($dp) }}</td>
-</tr>
-@endif
-
-<tr>
-    <td><strong>Total Bayar</strong></td>
-    <td class="right"><strong>{{ rupiah($payable) }}</strong></td>
-</tr>
-</table>
-
-<hr>
-
-{{-- ================= INFO PEMBAYARAN ================= --}}
-<div class="mb">
-    Metode  : {{ strtoupper($order->payment_method) }}<br>
-</div>
-
-{{-- ================= FOOTER ================= --}}
-<div class="center">
-    === TERIMA KASIH ===<br>
-    Selamat Menikmati 🙏
-</div>
+{{-- ================= AUTO PRINT ================= --}}
 <script>
 (function () {
     function doPrint() {
@@ -142,17 +178,13 @@
         window.print();
     }
 
-    // Desktop Chrome
-    window.addEventListener('load', function () {
+    window.onload = function () {
         setTimeout(doPrint, 300);
-    });
+    };
 
-    // Android / Tablet Chrome (lebih sensitif)
-    document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') {
-            setTimeout(doPrint, 300);
-        }
-    });
+    window.onafterprint = function () {
+        window.location.href = "/kasir";
+    };
 })();
 </script>
 

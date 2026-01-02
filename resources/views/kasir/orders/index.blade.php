@@ -206,7 +206,7 @@
                                             <small class="text-muted">Meja: {{ $order->table->name }}</small>
                                         @endif
                                     </td>
-                                    <td>{{ strtoupper($order->payment_method ?? '-') }}</td>
+                                    <td>{{ strtoupper($order->payments->first()->payment_method ?? '-') }}</td>
                                     <td class="text-end">{{ rupiah($order->grand_total) }}</td>
                                     <td class="text-center">
                                         <a href="{{ route('kasir.orders.show', $order) }}"

@@ -4,53 +4,46 @@
     <meta charset="utf-8">
     <title>Struk {{ $order->order_code }}</title>
 
-    <style>
-        body {
-            font-family: DejaVu Sans, sans-serif;
-            font-size: 11px;
-            color: #000;
-            position: relative;
-        }
+   <style>
+    @page {
+        margin: 5px;
+    }
 
-        .center { text-align: center; }
-        .right  { text-align: right; }
-        .mb     { margin-bottom: 6px; }
+    body {
+        font-family: monospace;
+        font-size: 11px;
+        color: #000;
+    }
 
-        hr {
-            border: none;
-            border-top: 1px dashed #000;
-            margin: 6px 0;
-        }
+    .center {
+        text-align: center;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+    .right {
+        text-align: right;
+    }
 
-        td {
-            padding: 2px 0;
-            vertical-align: top;
-        }
+    .mb {
+        margin-bottom: 6px;
+    }
 
-        /* ================= STEMPEL LUNAS ================= */
-        /* .stamp-lunas {
-            position: absolute;
-            top: 210px; /* area item list */
-            left: 50%;
-            transform: translateX(-50%) rotate(-20deg);
-            border: 6px double #c00;
-            color: #c00;
-            padding: 20px 60px;
-            font-size: 48px;
-            font-weight: 900;
-            letter-spacing: 6px;
-            text-transform: uppercase;
-            opacity: 0.25;
-            z-index: 30;
-            border-radius: 10px;
-            text-align: center;
-        } */
-    </style>
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        page-break-inside: avoid;
+    }
+
+    tr {
+        page-break-inside: avoid;
+    }
+
+    hr {
+        page-break-after: avoid;
+         border-top: 1px dashed #000;
+    }
+</style>
+
 </head>
 
 <body>
@@ -79,7 +72,8 @@
 <div class="center mb">
     {{-- <strong>{{ $order->outlet->name ?? 'KEDAI KRIBO' }}</strong><br>
     {{ $order->outlet->address ?? '' }} --}}
-     <img src="{{ public_path('assets/compiled/svg/logov1.png') }}" alt="Logo" width="120" height="110">
+    <img src="{{ public_path('assets/compiled/svg/logov1.png') }}"
+     width="100" height="90">
 </div>
 
 {{-- ================= INFO ORDER ================= --}}
@@ -134,14 +128,34 @@
 
 {{-- ================= INFO PEMBAYARAN ================= --}}
 <div class="mb">
-    Metode  : {{ strtoupper($order->payment_method) }}<br>
+    Metode  : {{ strtoupper($order->payments->first()->payment_method ?? '-') }}<br>
 </div>
 
 {{-- ================= FOOTER ================= --}}
 <div class="center">
     === TERIMA KASIH ===<br>
-    Selamat Menikmati 🙏
+    Selamat Menikmati 
 </div>
+<script>
+(function () {
+    function doPrint() {
+        window.focus();
+        window.print();
+    }
+
+    // Desktop Chrome
+    window.addEventListener('load', function () {
+        setTimeout(doPrint, 300);
+    });
+
+    // Android / Tablet Chrome (lebih sensitif)
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') {
+            setTimeout(doPrint, 300);
+        }
+    });
+})();
+</script>
 
 </body>
 </html>

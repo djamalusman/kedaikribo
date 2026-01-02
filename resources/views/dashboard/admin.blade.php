@@ -131,7 +131,7 @@ LEFT CONTENT
                                     <td class="text-end">
                                          <a href="{{ route('admin.dashboard.show', $order) }}"
                                            class="btn btn-sm btn-outline-primary" target="_blank">
-                                            Detail / Bayar
+                                            Detail
                                         </a>
                                     </td>
                                 </tr>
