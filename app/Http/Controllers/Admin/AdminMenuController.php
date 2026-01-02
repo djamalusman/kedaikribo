@@ -274,7 +274,15 @@ class AdminMenuController extends Controller
 
     public function destroy(MenuItem $menu)
     {
-        dd($menu);
+
+        $used = OrderItem::where('menu_item_id', $menu->id)->exists();
+       
+
+        if ($used) {
+            return redirect()
+                ->route('admin.menu.index')
+                ->with('error', 'Menu tidak bisa dihapus karena sudah digunakan di transaksi.');
+        }
         $menu->delete();
 
         return redirect()->route('admin.menu.index')

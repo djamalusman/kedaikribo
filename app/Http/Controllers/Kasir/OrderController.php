@@ -851,109 +851,157 @@ class OrderController extends Controller
     }
 
 
-    public function pay(Request $request, Order $order)
-    {
+    // public function pay(Request $request, Order $order)
+    // {
         
-        // $this->authorizeOrderForKasir($order);
+    //     // $this->authorizeOrderForKasir($order);
 
-        if ($order->payment_status === 'paid') {
-            return redirect()->route('kasir.orders.show', $order)
-                ->with('error', 'Order ini sudah dibayar.');
-        }
+    //     if ($order->payment_status === 'paid') {
+    //         return redirect()->route('kasir.orders.show', $order)
+    //             ->with('error', 'Order ini sudah dibayar.');
+    //     }
 
-        $data = $request->validate([
-            'payment_method' => 'required|in:cash,qris,transfer',
-            'paid_amount'    => 'required|numeric|min:0',
-            'reference_no'   => 'nullable|string|max:100',
-            'is_reserved'   => 'nullable|string|max:100',
-        ]);
+    //     $data = $request->validate([
+    //         'payment_method' => 'required|in:cash,qris,transfer',
+    //         'paid_amount'    => 'required|numeric|min:0',
+    //         'reference_no'   => 'nullable|string|max:100',
+    //         'is_reserved'   => 'nullable|string|max:100',
+    //     ]);
        
-        DB::transaction(function () use ($order, $data) {
+    //     DB::transaction(function () use ($order, $data) {
             
-            // -------- 1) buat nomor resi auto -----------
-            $referenceNo = $data['reference_no'] ?: (
-                'PAY-' . now()->format('YmdHis') . '-' . $order->id
-            );
+    //         // -------- 1) buat nomor resi auto -----------
+    //         $referenceNo = $data['reference_no'] ?: (
+    //             'PAY-' . now()->format('YmdHis') . '-' . $order->id
+    //         );
 
-            // -------- 2) insert ke payments -------------
-            Payment::create([
-                'order_id'     => $order->id,
-                'payment_method'       => $data['payment_method'],
-                'amount'       => $data['paid_amount'],
-                'ref_no' => $referenceNo,
-                'paid_at'      => now(),
-            ]);
+    //         // -------- 2) insert ke payments -------------
+    //         Payment::create([
+    //             'order_id'     => $order->id,
+    //             'payment_method'       => $data['payment_method'],
+    //             'amount'       => $data['paid_amount'],
+    //             'ref_no' => $referenceNo,
+    //             'paid_at'      => now(),
+    //         ]);
 
-            // -------- 3) update summary di orders -------
-            $order->update([
-                'status'         => 'paid',
-                'payment_status' => 'paid',
-            ]);
+    //         // -------- 3) update summary di orders -------
+    //         $order->update([
+    //             'status'         => 'paid',
+    //             'payment_status' => 'paid',
+    //         ]);
 
-            // -------- 4) loyalty point (earn) -----------
-            if ($order->customer_id) {
-                $points = (int) floor($order->grand_total / 10000); // 1 poin per 10rb
+    //         // -------- 4) loyalty point (earn) -----------
+    //         if ($order->customer_id) {
+    //             $points = (int) floor($order->grand_total / 10000); // 1 poin per 10rb
 
-                if ($points > 0) {
-                    LoyaltyPoint::create([
-                        'customer_id' => $order->customer_id,
-                        'order_id'    => $order->id,
-                        'points'      => $points,
-                        'type'        => 'earn',
-                        'description' => 'Pembelian order ' . $order->order_code,
-                    ]);
-                }
-            }
-            // -------- 5) kalau dine in atau reseved, meja jadi available ----
-            $table = $order->table;
-            if ($order->order_type === 'dine_in' && $order->table_id &&  $data['is_reserved'] !="reserved" ) {
+    //             if ($points > 0) {
+    //                 LoyaltyPoint::create([
+    //                     'customer_id' => $order->customer_id,
+    //                     'order_id'    => $order->id,
+    //                     'points'      => $points,
+    //                     'type'        => 'earn',
+    //                     'description' => 'Pembelian order ' . $order->order_code,
+    //                 ]);
+    //             }
+    //         }
+    //         // -------- 5) kalau dine in atau reseved, meja jadi available ----
+    //         $table = $order->table;
+    //         if ($order->order_type === 'dine_in' && $order->table_id &&  $data['is_reserved'] !="reserved" ) {
                 
-                if ($table) {
-                    $table->status = 'occupied';
-                    $table->save();
-                }
-            }
-            // ambil semua item dalam order
-            $orderItems = OrderItem::where('order_id', $order->id)->get();
+    //             if ($table) {
+    //                 $table->status = 'occupied';
+    //                 $table->save();
+    //             }
+    //         }
+    //         // ambil semua item dalam order
+    //         $orderItems = OrderItem::where('order_id', $order->id)->get();
 
-            foreach ($orderItems as $item) {
+    //         foreach ($orderItems as $item) {
 
-                // ambil menu
-                $menu = MenuItem::find($item->menu_item_id);
+    //             // ambil menu
+    //             $menu = MenuItem::find($item->menu_item_id);
 
-                if ($menu && $menu->stock_id !== null) {
+    //             if ($menu && $menu->stock_id !== null) {
 
-                    // ambil stock
-                    $stock = StockMovement::find($menu->stock_id);
+    //                 // ambil stock
+    //                 $stock = StockMovement::find($menu->stock_id);
 
-                    if ($stock) {
+    //                 if ($stock) {
 
-                        // hitung sisa stock
-                        $sisaQty = $stock->qty - $item->qty;
+    //                     // hitung sisa stock
+    //                     $sisaQty = $stock->qty - $item->qty;
 
-                        // update stock
-                        $stock->update([
-                            'qty' => $sisaQty
-                        ]);
+    //                     // update stock
+    //                     $stock->update([
+    //                         'qty' => $sisaQty
+    //                     ]);
 
-                        if ($table) {
-                            $table->status = 'occupied';
-                            $table->save();
-                        }
-                    }
-                }
-            }
+    //                     if ($table) {
+    //                         $table->status = 'occupied';
+    //                         $table->save();
+    //                     }
+    //                 }
+    //             }
+    //         }
 
-        });
+    //     });
 
-        // return redirect()
-        // ->route('kasir.orders.index', $order)
-        // ->with('success', 'Pembayaran berhasil. Struk dicetak.');
-          return response()->json([
-            'success'    => true,
-            'print_url' => route('kasir.orders.print', $order),
-        ]);
+    //     // return redirect()
+    //     // ->route('kasir.orders.index', $order)
+    //     // ->with('success', 'Pembayaran berhasil. Struk dicetak.');
+    //       return response()->json([
+    //         'success'    => true,
+    //         'print_url' => route('kasir.orders.print', $order),
+    //     ]);
+    // }
+
+    public function pay(Request $request, Order $order)
+{
+    if ($order->payment_status === 'paid') {
+        return response()->json([
+            'success' => false,
+            'message' => 'Order sudah dibayar'
+        ], 422);
     }
+
+    $data = $request->validate([
+        'payment_method' => 'required|in:cash,qris,transfer',
+        'paid_amount'    => 'required|numeric|min:0',
+        'reference_no'   => 'nullable|string|max:100',
+        'is_reserved'    => 'nullable|string|max:100',
+    ]);
+
+    DB::transaction(function () use ($order, $data) {
+
+        $referenceNo = $data['reference_no'] ?: (
+            'PAY-' . now()->format('YmdHis') . '-' . $order->id
+        );
+
+        Payment::create([
+            'order_id'       => $order->id,
+            'payment_method' => $data['payment_method'],
+            'amount'         => $data['paid_amount'],
+            'ref_no'         => $referenceNo,
+            'paid_at'        => now(),
+        ]);
+
+        $order->update([
+            'status'         => 'paid',
+            'payment_status' => 'paid',
+        ]);
+
+        // contoh redirect setelah print
+        session([
+            'after_print_redirect' => route('kasir.orders.index')
+        ]);
+    });
+
+    return response()->json([
+        'success'   => true,
+        'print_url'=> route('kasir.orders.print', $order->id),
+    ]);
+}
+
 
     public function afterPay(Order $order)
     {

@@ -218,12 +218,13 @@
 document.addEventListener('DOMContentLoaded', function () {
 
     const form = document.getElementById('pay-form');
-    if (!form) return; // ⛔ kalau form tidak ada, stop
+    if (!form) return;
+
+    const btn = document.getElementById('btn-pay');
 
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
 
-        const btn = document.getElementById('btn-pay');
         btn.disabled = true;
         btn.innerText = 'Memproses...';
 
@@ -231,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const response = await fetch(
-                "{{ route('kasir.orders.pay', $order) }}",
+                "{{ route('kasir.orders.pay', $order->id) }}",
                 {
                     method: 'POST',
                     headers: {
@@ -242,27 +243,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             );
 
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                const text = await response.text();
-                console.error(text);
-                throw new Error('Server tidak mengembalikan JSON');
-            }
-
             const data = await response.json();
 
-            if (!data.success) {
+            if (!data.success || !data.print_url) {
                 throw new Error(data.message || 'Pembayaran gagal');
             }
 
-            window.open(data.print_url, '_blank');
+            /**
+             * 🔥 OPEN NEW TAB
+             */
+            window.open(data.print_url, '_blank', 'noopener,noreferrer');
 
-            setTimeout(() => {
-                window.location.href = "{{ route('kasir.orders.index') }}";
-            }, 1200);
+            /**
+             * 🔥 JANGAN redirect halaman kasir
+             * Kasir tetap di halaman ini
+             */
+            btn.innerText = 'Berhasil';
 
         } catch (err) {
-            alert(err.message);
+            alert(err.message || 'Terjadi kesalahan');
             btn.disabled = false;
             btn.innerText = 'Tandai Lunas & Cetak';
         }
@@ -270,6 +269,5 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 </script>
-
 
 @endsection
