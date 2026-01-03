@@ -1,41 +1,43 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
 <meta charset="utf-8">
 <title>Struk {{ $order->order_code }}</title>
 
 <style>
-/* ================= RESET ================= */
+/* ================= RESET TOTAL ================= */
 * {
     box-sizing: border-box;
-    margin: 0;
-    padding: 0;
 }
 
 html, body {
-    width: 57mm;
+    width: 58mm;
+    margin: 0;
+    padding: 0;
     font-family: monospace;
     font-size: 11px;
     color: #000;
 }
 
-/* ================= PRINT ================= */
+/* ================= PRINT SETTING ================= */
 @media print {
     @page {
-        size: 57mm auto;   /* 🔥 AUTO HEIGHT = WAJIB */
-        margin: 0;
+        size: 58mm auto;   /* 🔥 panjang otomatis */
+        margin: 0;         /* 🔥 tanpa margin */
     }
 
     html, body {
-        width: 57mm;
+        width: 58mm;
         margin: 0;
         padding: 0;
+        overflow: visible;
     }
 }
 
 /* ================= CONTAINER ================= */
 #receipt {
-    width: 57mm;
+    width: 58mm;
+    overflow: visible;
 }
 
 /* ================= HELPER ================= */
@@ -50,17 +52,24 @@ table {
 }
 
 td {
-    padding: 1px 0;
     vertical-align: top;
+    padding: 1px 0;
 }
 
-td.price,
-td.qty {
+/* kolom harga kanan */
+td.price {
     text-align: right;
     white-space: nowrap;
 }
 
-/* ================= LINE ================= */
+/* qty x harga */
+td.qty {
+    text-align: right;
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+/* ================= HR ================= */
 hr {
     border: none;
     border-top: 1px dashed #000;
@@ -81,13 +90,13 @@ $payable  = $order->reserved ? max(0, $grand - $dp) : $grand;
 
 <div id="receipt">
 
-    {{-- HEADER --}}
+    {{-- ========== HEADER TOKO ========== --}}
     <div class="center mb">
-        <strong>{{ $order->outlet->name ?? 'TOKO' }}</strong><br>
+        <strong>{{ $order->outlet->name ?? 'KEDAI KRIBO' }}</strong><br>
         {{ $order->outlet->address ?? '' }}
     </div>
 
-    {{-- INFO --}}
+    {{-- ========== INFO ORDER ========== --}}
     <div class="mb">
         Order : {{ $order->order_code }}<br>
         Tgl   : {{ $order->created_at->format('d/m/Y H:i') }}<br>
@@ -97,23 +106,28 @@ $payable  = $order->reserved ? max(0, $grand - $dp) : $grand;
 
     <hr>
 
-    {{-- ITEMS --}}
+    {{-- ========== ITEM LIST (FORMAT YANG KAMU MAU) ========== --}}
     <table>
     @foreach($order->items as $item)
+
+        <!-- Baris 1: Nama + Total -->
         <tr>
             <td>{{ $item->menuItem->name }}</td>
             <td class="price">{{ rupiah($item->total) }}</td>
         </tr>
+
+        <!-- Baris 2: Qty x Harga (kanan) -->
         <tr>
             <td></td>
             <td class="qty">{{ $item->qty }} x {{ rupiah($item->price) }}</td>
         </tr>
+
     @endforeach
     </table>
 
     <hr>
 
-    {{-- TOTAL --}}
+    {{-- ========== RINGKASAN TOTAL ========== --}}
     <table>
         <tr>
             <td>Subtotal</td>
@@ -123,12 +137,14 @@ $payable  = $order->reserved ? max(0, $grand - $dp) : $grand;
             <td>Diskon</td>
             <td class="price">- {{ rupiah($discount) }}</td>
         </tr>
+
         @if($order->reserved)
         <tr>
             <td>DP</td>
             <td class="price">- {{ rupiah($dp) }}</td>
         </tr>
         @endif
+
         <tr>
             <td><strong>TOTAL</strong></td>
             <td class="price"><strong>{{ rupiah($payable) }}</strong></td>
@@ -137,13 +153,13 @@ $payable  = $order->reserved ? max(0, $grand - $dp) : $grand;
 
     <hr>
 
-    {{-- PEMBAYARAN --}}
+    {{-- ========== PEMBAYARAN ========== --}}
     <div class="mb">
         Metode : {{ strtoupper($order->payments->first()->payment_method ?? '-') }}<br>
         Ref    : {{ $order->payments->first()->ref_no ?? '-' }}
     </div>
 
-    {{-- FOOTER --}}
+    {{-- ========== FOOTER ========== --}}
     <div class="center">
         === TERIMA KASIH ===<br>
         Selamat Menikmati
@@ -151,26 +167,33 @@ $payable  = $order->reserved ? max(0, $grand - $dp) : $grand;
 
 </div>
 
-{{-- ================= AUTO PRINT (STABIL) ================= --}}
+{{-- ========== AUTO PRINT (ANTI DOUBEL & ANTI 404) ========== --}}
 <script>
-(function () {
-    let printed = false;
+let printed = false;
 
-    function doPrint() {
-        if (printed) return;
-        printed = true;
-        window.print();
-    }
+function doPrint() {
+    if (printed) return;
+    printed = true;
+    window.focus();
+    window.print();
+}
 
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(doPrint, 150);
-    });
+window.onload = function () {
+    setTimeout(doPrint, 300);
+};
 
-    window.onafterprint = () => {
-        window.close(); // aman Chrome & WebView
-    };
-})();
+/**
+ * 🔥 KUNCI UTAMA
+ * - Cancel print
+ * - Ganti printer
+ * - Print selesai
+ * → TAB DITUTUP, BUKAN REDIRECT
+ */
+window.onafterprint = function () {
+    window.close();
+};
 </script>
+
 
 </body>
 </html>

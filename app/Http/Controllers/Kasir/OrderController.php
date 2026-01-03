@@ -1123,87 +1123,108 @@ class OrderController extends Controller
     // }
 
     // versi linux dan simpan di public_html
+    // public function print(Order $order)
+    // {
+    //     // ===============================
+    //     // 1️⃣ VALIDASI STATUS (OPSIONAL TAPI DISARANKAN)
+    //     // ===============================
+    //     if ($order->payment_status !== 'paid') {
+    //         abort(403, 'Order belum dibayar');
+    //     }
+
+    //     // ===============================
+    //     // 2️⃣ NAMA FILE
+    //     // ===============================
+    //     $fileName = 'struk-'.$order->order_code.'.pdf';
+
+    //     // ===============================
+    //     // 3️⃣ PATH AMAN UNTUK SHARED HOSTING
+    //     // ===============================
+    //     // Ini otomatis menunjuk ke public_html
+    //     $documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+
+    //     // Folder tujuan (HARUS SUDAH ADA)
+    //     $storagePath = $documentRoot.'/storage/struk';
+
+    //     // Full path file
+    //     $fullPath = $storagePath.'/'.$fileName;
+
+    //     // URL public PDF
+    //     $publicUrl = asset('storage/struk/'.$fileName);
+
+    //     // ===============================
+    //     // 4️⃣ JIKA FILE SUDAH ADA → LANGSUNG BUKA
+    //     // ===============================
+    //     if (file_exists($fullPath)) {
+    //         return redirect()->to($publicUrl);
+    //     }
+
+    //     // ===============================
+    //     // 5️⃣ LOAD DATA ORDER
+    //     // ===============================
+    //     $order->load([
+    //         'items.menuItem',
+    //         'customer',
+    //         'table',
+    //         'promotion',
+    //         'reserved',
+    //         'outlet',
+    //         'payments',
+    //     ]);
+
+    //     // ===============================
+    //     // 6️⃣ HITUNG TINGGI KERTAS
+    //     // ===============================
+    //     $paperWidth  = 164; // 58mm
+    //     $baseHeight  = 180;
+    //     $lineHeight  = 16;
+    //     $lines       = 0;
+
+    //     foreach ($order->items as $item) {
+    //         $nameLines = ceil(strlen($item->menuItem->name) / 18);
+    //         $lines += max(1, $nameLines);
+    //     }
+
+    //     $lines += 8;
+    //     $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
+
+    //     // ===============================
+    //     // 7️⃣ GENERATE PDF
+    //     // ===============================
+    //     $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
+    //         ->setPaper([0, 0, $paperWidth, $paperHeight]);
+
+    //     // ===============================
+    //     // 8️⃣ SIMPAN PDF (TANPA mkdir)
+    //     // ===============================
+    //     file_put_contents($fullPath, $pdf->output());
+
+    //     // ===============================
+    //     // 9️⃣ BUKA PDF DI TAB BARU
+    //     // ===============================
+    //     return redirect()->to($publicUrl);
+    // }
+
     public function print(Order $order)
     {
-        // ===============================
-        // 1️⃣ VALIDASI STATUS (OPSIONAL TAPI DISARANKAN)
-        // ===============================
+        // 🔒 keamanan dasar
         if ($order->payment_status !== 'paid') {
             abort(403, 'Order belum dibayar');
         }
 
-        // ===============================
-        // 2️⃣ NAMA FILE
-        // ===============================
-        $fileName = 'struk-'.$order->order_code.'.pdf';
-
-        // ===============================
-        // 3️⃣ PATH AMAN UNTUK SHARED HOSTING
-        // ===============================
-        // Ini otomatis menunjuk ke public_html
-        $documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
-
-        // Folder tujuan (HARUS SUDAH ADA)
-        $storagePath = $documentRoot.'/storage/struk';
-
-        // Full path file
-        $fullPath = $storagePath.'/'.$fileName;
-
-        // URL public PDF
-        $publicUrl = asset('storage/struk/'.$fileName);
-
-        // ===============================
-        // 4️⃣ JIKA FILE SUDAH ADA → LANGSUNG BUKA
-        // ===============================
-        if (file_exists($fullPath)) {
-            return redirect()->to($publicUrl);
-        }
-
-        // ===============================
-        // 5️⃣ LOAD DATA ORDER
-        // ===============================
+        // load relasi yang dibutuhkan
         $order->load([
             'items.menuItem',
             'customer',
-            'table',
-            'promotion',
-            'reserved',
             'outlet',
             'payments',
+            'reserved',
         ]);
 
-        // ===============================
-        // 6️⃣ HITUNG TINGGI KERTAS
-        // ===============================
-        $paperWidth  = 164; // 58mm
-        $baseHeight  = 180;
-        $lineHeight  = 16;
-        $lines       = 0;
-
-        foreach ($order->items as $item) {
-            $nameLines = ceil(strlen($item->menuItem->name) / 18);
-            $lines += max(1, $nameLines);
-        }
-
-        $lines += 8;
-        $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
-
-        // ===============================
-        // 7️⃣ GENERATE PDF
-        // ===============================
-        $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
-            ->setPaper([0, 0, $paperWidth, $paperHeight]);
-
-        // ===============================
-        // 8️⃣ SIMPAN PDF (TANPA mkdir)
-        // ===============================
-        file_put_contents($fullPath, $pdf->output());
-
-        // ===============================
-        // 9️⃣ BUKA PDF DI TAB BARU
-        // ===============================
-        return redirect()->to($publicUrl);
+        // ⛔ TIDAK ADA PDF
+        return view('kasir.orders.print', compact('order'));
     }
+
 
 
     public function printIndex(Order $order)
