@@ -1078,17 +1078,68 @@ class OrderController extends Controller
     //     return $pdf->stream('struk-'.$order->order_code.'.pdf');
     // }
 
+
+    // versi windows dan simpan di storage
+    // public function print(Order $order)
+    // {
+    //     $fileName = 'struk-'.$order->order_code.'.pdf';
+    //     $path     = 'struk/'.$fileName;
+
+    //     // ✅ 1. Kalau file SUDAH ADA → langsung buka
+    //     if (Storage::disk('public')->exists($path)) {
+    //         return redirect()->to(asset('storage/'.$path));
+    //     }
+
+    //     // ⛏️ 2. Kalau BELUM ADA → baru generate
+    //     $order->load([
+    //         'items.menuItem',
+    //         'customer',
+    //         'table',
+    //         'promotion',
+    //         'reserved',
+    //         'outlet',
+    //         'payments',
+    //     ]);
+
+    //     $paperWidth  = 164;
+    //     $baseHeight  = 180;
+    //     $lineHeight  = 16;
+    //     $lines       = 0;
+
+    //     foreach ($order->items as $item) {
+    //         $nameLines = ceil(strlen($item->menuItem->name) / 18);
+    //         $lines += max(1, $nameLines);
+    //     }
+
+    //     $lines += 8;
+    //     $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
+
+    //     $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
+    //         ->setPaper([0, 0, $paperWidth, $paperHeight]);
+
+    //     Storage::disk('public')->put($path, $pdf->output());
+
+    //     return redirect()->to(asset('storage/'.$path));
+    // }
+
+    // versi linux dan simpan di public_html
     public function print(Order $order)
     {
         $fileName = 'struk-'.$order->order_code.'.pdf';
-        $path     = 'struk/'.$fileName;
+
+        // 🔧 PATH ABSOLUTE KE public_html
+        $publicHtmlStorage = '/home/kedaikribo/public_html/storage/struk';
+        $fullPath = $publicHtmlStorage.'/'.$fileName;
+
+        // 🌐 URL PDF
+        $publicUrl = 'https://kedaikribo.com/storage/struk/'.$fileName;
 
         // ✅ 1. Kalau file SUDAH ADA → langsung buka
-        if (Storage::disk('public')->exists($path)) {
-            return redirect()->to(asset('storage/'.$path));
+        if (file_exists($fullPath)) {
+            return redirect()->to($publicUrl);
         }
 
-        // ⛏️ 2. Kalau BELUM ADA → baru generate
+        // ⛏️ 2. Kalau BELUM ADA → generate PDF
         $order->load([
             'items.menuItem',
             'customer',
@@ -1115,10 +1166,18 @@ class OrderController extends Controller
         $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
             ->setPaper([0, 0, $paperWidth, $paperHeight]);
 
-        Storage::disk('public')->put($path, $pdf->output());
+        // 📁 Pastikan folder ada
+        if (!file_exists($publicHtmlStorage)) {
+            mkdir($publicHtmlStorage, 0755, true);
+        }
 
-        return redirect()->to(asset('storage/'.$path));
+        // 💾 Simpan PDF langsung ke public_html
+        file_put_contents($fullPath, $pdf->output());
+
+        // 👉 Buka PDF di browser
+        return redirect()->to($publicUrl);
     }
+
 
     public function printIndex(Order $order)
     {
