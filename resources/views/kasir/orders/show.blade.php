@@ -214,7 +214,7 @@
 
 @endsection
 @section('scripts')
-<script>
+{{-- <script>
 document.addEventListener('DOMContentLoaded', function () {
 
     setTimeout(() => {
@@ -226,64 +226,59 @@ document.addEventListener('DOMContentLoaded', function () {
     }, 1000);
 
 });
-</script>
+</script> --}}
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-
-    const form = document.getElementById('pay-form');
-    if (!form) return;
+document.getElementById('pay-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
 
     const btn = document.getElementById('btn-pay');
+    btn.disabled = true;
+    btn.innerText = 'Memproses...';
 
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    const formData = new FormData(this);
 
-        btn.disabled = true;
-        btn.innerText = 'Memproses...';
-
-        try {
-            const response = await fetch(
-                "{{ route('kasir.orders.pay', $order->id) }}",
-                {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Accept': 'application/json'
-                    },
-                    body: new FormData(form)
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error('Server error');
+    try {
+        const response = await fetch(
+            "{{ route('kasir.orders.pay', $order) }}",
+            {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: formData
             }
+        );
 
-            // 🔥 SATU KALI SAJA
-            const result = await response.json();
+        // 🔥 cek dulu apakah JSON
+        const contentType = response.headers.get('content-type');
 
-            if (!result.success) {
-                throw new Error(result.message || 'Pembayaran gagal');
-            }
-
-            // 🔥 ANDROID WEBVIEW (THERMAL)
-            if (window.AndroidPrinter && result.print_text) {
-                AndroidPrinter.print(result.print_text);
-            }
-            // 🔁 FALLBACK DESKTOP
-            else if (result.print_url) {
-                window.open(result.print_url, '_blank');
-            }
-
-            btn.innerText = 'Berhasil';
-
-        } catch (err) {
-            alert(err.message || 'Terjadi kesalahan');
-            btn.disabled = false;
-            btn.innerText = 'Tandai Lunas & Cetak';
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error(text);
+            throw new Error('Server tidak mengembalikan JSON');
         }
-    });
 
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.message || 'Pembayaran gagal');
+        }
+
+        // 🖨️ buka tab print
+        window.open(data.print_url, '_blank');
+
+        setTimeout(() => {
+            window.location.href = "{{ route('kasir.orders.index') }}";
+        }, 1200);
+
+    } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.innerText = 'Tandai Lunas & Cetak';
+    }
 });
 </script>
+
 @endsection

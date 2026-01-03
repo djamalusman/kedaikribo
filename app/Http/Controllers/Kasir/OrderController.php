@@ -20,7 +20,7 @@ use App\Models\LoyaltyPoint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\Storage;
 
 class OrderController extends Controller
 {
@@ -956,58 +956,50 @@ class OrderController extends Controller
     // }
 
     public function pay(Request $request, Order $order)
-{
-    if ($order->payment_status === 'paid') {
+    {
+        $this->authorizeOrderForKasir($order);
+
+        if ($order->payment_status === 'paid') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Order ini sudah dibayar'
+            ], 400);
+        }
+
+        $data = $request->validate([
+            'payment_method' => 'required|in:cash,qris',
+            'paid_amount'    => 'required|numeric|min:0',
+            'reference_no'   => 'nullable|string|max:100',
+            'is_reserved'    => 'nullable|string',
+        ]);
+
+        DB::transaction(function () use ($order, $data) {
+
+            $referenceNo = $data['reference_no'] ?? (
+                'PAY-' . now()->format('YmdHis') . '-' . $order->id
+            );
+
+            Payment::create([
+                'order_id'       => $order->id,
+                'payment_method' => $data['payment_method'],
+                'amount'         => $data['paid_amount'],
+                'ref_no'         => $referenceNo,
+                'paid_at'        => now(),
+            ]);
+
+            $order->update([
+                'status'         => 'paid',
+                'payment_status' => 'paid',
+            ]);
+        });
+
+        // 🔥 INI YANG PENTING
         return response()->json([
-            'success' => false,
-            'message' => 'Order sudah dibayar'
-        ], 422);
+            'success'   => true,
+            'print_url'=> route('kasir.orders.print', $order),
+        ]);
     }
 
-    $data = $request->validate([
-        'payment_method' => 'required|in:cash,qris,transfer',
-        'paid_amount'    => 'required|numeric|min:0',
-        'reference_no'   => 'nullable|string|max:100',
-        'is_reserved'    => 'nullable|string|max:100',
-    ]);
-     $printText = '';
-    DB::transaction(function () use ($order, $data) {
-
-        $referenceNo = $data['reference_no'] ?: (
-            'PAY-' . now()->format('YmdHis') . '-' . $order->id
-        );
-
-        Payment::create([
-            'order_id'       => $order->id,
-            'payment_method' => $data['payment_method'],
-            'amount'         => $data['paid_amount'],
-            'ref_no'         => $referenceNo,
-            'paid_at'        => now(),
-        ]);
-
-        $order->update([
-            'status'         => 'paid',
-            'payment_status' => 'paid',
-        ]);
-
-        // contoh redirect setelah print
-        session([
-            'after_print_redirect' => route('kasir.orders.index')
-        ]);
-    });
-
-    
-    $printText = view(
-            'kasir.orders.print-text',
-            compact('order')
-        )->render();
-
-        return response()->json([
-            'success' => true,
-            'print_text' => $printText
-        ]);
-
-}
 
 
     public function afterPay(Order $order)
@@ -1035,8 +1027,68 @@ class OrderController extends Controller
     // }
 
 
+    // public function print(Order $order)
+    // {
+    //     $order->load([
+    //         'items.menuItem',
+    //         'customer',
+    //         'table',
+    //         'promotion',
+    //         'reserved',
+    //         'outlet',
+    //         'payments',
+    //     ]);
+
+    //     // ⚠️ PENTING
+    //     // JANGAN DomPDF
+    //     // HARUS HTML agar RawBT bisa menangkap print
+
+    //     return view('kasir.orders.print', compact('order'));
+    // }
+
+
+    // public function print(Order $order)
+    // {
+    //     $order->load([
+    //         'items.menuItem',
+    //         'customer',
+    //         'table',
+    //         'promotion',
+    //         'reserved',
+    //         'outlet',
+    //         'payments',
+    //     ]);
+
+    //     $paperWidth  = 164; // 58mm
+    //     $baseHeight  = 180;
+    //     $lineHeight  = 16;
+    //     $lines       = 0;
+
+    //     foreach ($order->items as $item) {
+    //         $nameLines = ceil(strlen($item->menuItem->name) / 18);
+    //         $lines += max(1, $nameLines);
+    //     }
+
+    //     $lines += 8;
+    //     $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
+
+    //     $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
+    //         ->setPaper([0, 0, $paperWidth, $paperHeight]);
+
+    //     return $pdf->stream('struk-'.$order->order_code.'.pdf');
+    // }
+
     public function print(Order $order)
     {
+        $fileName = 'struk-'.$order->order_code.'.pdf';
+        $path     = 'struk/'.$fileName;
+
+        // ✅ 1. Kalau file SUDAH ADA → langsung buka
+        if (Storage::disk('public')->exists($path)) {
+            return redirect()->to(asset('storage/'.$path));
+        }
+
+        // ⛏️ 2. Kalau BELUM ADA → baru generate
         $order->load([
             'items.menuItem',
             'customer',
@@ -1047,27 +1099,7 @@ class OrderController extends Controller
             'payments',
         ]);
 
-        // ⚠️ PENTING
-        // JANGAN DomPDF
-        // HARUS HTML agar RawBT bisa menangkap print
-
-        return view('kasir.orders.print', compact('order'));
-    }
-
-
-    public function printPdf(Order $order)
-    {
-        $order->load([
-            'items.menuItem',
-            'customer',
-            'table',
-            'promotion',
-            'reserved',
-            'outlet',
-            'payments',
-        ]);
-
-        $paperWidth  = 164; // 58mm
+        $paperWidth  = 164;
         $baseHeight  = 180;
         $lineHeight  = 16;
         $lines       = 0;
@@ -1083,7 +1115,9 @@ class OrderController extends Controller
         $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
             ->setPaper([0, 0, $paperWidth, $paperHeight]);
 
-        return $pdf->stream('struk-'.$order->order_code.'.pdf');
+        Storage::disk('public')->put($path, $pdf->output());
+
+        return redirect()->to(asset('storage/'.$path));
     }
 
     public function printIndex(Order $order)
