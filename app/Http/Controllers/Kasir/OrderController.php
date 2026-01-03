@@ -1125,21 +1125,43 @@ class OrderController extends Controller
     // versi linux dan simpan di public_html
     public function print(Order $order)
     {
+        // ===============================
+        // 1️⃣ VALIDASI STATUS (OPSIONAL TAPI DISARANKAN)
+        // ===============================
+        if ($order->payment_status !== 'paid') {
+            abort(403, 'Order belum dibayar');
+        }
+
+        // ===============================
+        // 2️⃣ NAMA FILE
+        // ===============================
         $fileName = 'struk-'.$order->order_code.'.pdf';
 
-        // 🔧 PATH ABSOLUTE KE public_html
-        $publicHtmlStorage = '/home/kedaikribo/public_html/storage/struk';
-        $fullPath = $publicHtmlStorage.'/'.$fileName;
+        // ===============================
+        // 3️⃣ PATH AMAN UNTUK SHARED HOSTING
+        // ===============================
+        // Ini otomatis menunjuk ke public_html
+        $documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
 
-        // 🌐 URL PDF
-        $publicUrl = 'https://kedaikribo.com/storage/struk/'.$fileName;
+        // Folder tujuan (HARUS SUDAH ADA)
+        $storagePath = $documentRoot.'/storage/struk';
 
-        // ✅ 1. Kalau file SUDAH ADA → langsung buka
+        // Full path file
+        $fullPath = $storagePath.'/'.$fileName;
+
+        // URL public PDF
+        $publicUrl = asset('storage/struk/'.$fileName);
+
+        // ===============================
+        // 4️⃣ JIKA FILE SUDAH ADA → LANGSUNG BUKA
+        // ===============================
         if (file_exists($fullPath)) {
             return redirect()->to($publicUrl);
         }
 
-        // ⛏️ 2. Kalau BELUM ADA → generate PDF
+        // ===============================
+        // 5️⃣ LOAD DATA ORDER
+        // ===============================
         $order->load([
             'items.menuItem',
             'customer',
@@ -1150,7 +1172,10 @@ class OrderController extends Controller
             'payments',
         ]);
 
-        $paperWidth  = 164;
+        // ===============================
+        // 6️⃣ HITUNG TINGGI KERTAS
+        // ===============================
+        $paperWidth  = 164; // 58mm
         $baseHeight  = 180;
         $lineHeight  = 16;
         $lines       = 0;
@@ -1163,18 +1188,20 @@ class OrderController extends Controller
         $lines += 8;
         $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
 
+        // ===============================
+        // 7️⃣ GENERATE PDF
+        // ===============================
         $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
             ->setPaper([0, 0, $paperWidth, $paperHeight]);
 
-        // 📁 Pastikan folder ada
-        if (!file_exists($publicHtmlStorage)) {
-            mkdir($publicHtmlStorage, 0755, true);
-        }
-
-        // 💾 Simpan PDF langsung ke public_html
+        // ===============================
+        // 8️⃣ SIMPAN PDF (TANPA mkdir)
+        // ===============================
         file_put_contents($fullPath, $pdf->output());
 
-        // 👉 Buka PDF di browser
+        // ===============================
+        // 9️⃣ BUKA PDF DI TAB BARU
+        // ===============================
         return redirect()->to($publicUrl);
     }
 
