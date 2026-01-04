@@ -80,6 +80,10 @@ Route::middleware('auth')->group(function () {
             Route::resource('menu', AdminMenuController::class);
             Route::get('menu/next-code', [AdminMenuController::class, 'nextCode'])
             ->name('menu.next-code');
+
+            
+            Route::get('menu/data', [MenuController::class, 'data'])
+                ->name('menu.data');
             // 📦 Bahan Baku
             Route::resource('ingredients', IngredientController::class);
 
