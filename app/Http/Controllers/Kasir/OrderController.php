@@ -1255,7 +1255,7 @@ class OrderController extends Controller
         // 1 baris ≈ 14pt (thermal)
         $paperHeight = $lines * 14;
 
-        $pdf = Pdf::loadView('kasir.orders.print_pdf', compact('order'))
+        $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
             ->setPaper([0, 0, $paperWidth, $paperHeight]);
 
         return $pdf->stream('struk-'.$order->order_code.'.pdf');
