@@ -78,9 +78,9 @@ Route::middleware('auth')->group(function () {
             )->name('dashboard.show');
             // MENU (sudah ada)
             Route::resource('menu', AdminMenuController::class);
+            
             Route::get('menu/next-code', [AdminMenuController::class, 'nextCode'])
             ->name('menu.next-code');
-
             
             Route::get('menu/data', [AdminMenuController::class, 'data'])
                 ->name('menu.data');
