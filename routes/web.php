@@ -84,6 +84,9 @@ Route::middleware('auth')->group(function () {
             
             Route::get('menu/data', [AdminMenuController::class, 'data'])
                 ->name('menu.data');
+
+            Route::resource('menu', AdminMenuController::class)
+                ->except(['show']);
             // 📦 Bahan Baku
             Route::resource('ingredients', IngredientController::class);
 
