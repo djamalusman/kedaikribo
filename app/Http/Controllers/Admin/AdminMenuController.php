@@ -53,6 +53,11 @@ class AdminMenuController extends Controller
             ->rawColumns(['status','aksi'])
             ->make(true);
     }
+    public function show(MenuItem $menu)
+    {
+        return redirect()->route('admin.menu.index');
+    }
+
     public function create()
     {
         $categories = Category::orderBy('name')->get();
