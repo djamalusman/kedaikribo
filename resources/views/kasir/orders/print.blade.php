@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 
 <style>
+* {
+    box-sizing: border-box;
+    page-break-inside: avoid;
+}
+
 body {
     font-family: monospace;
     font-size: 10px;
@@ -11,15 +16,8 @@ body {
     padding: 0;
 }
 
-* {
-    page-break-inside: avoid !important;
-    page-break-before: avoid !important;
-    page-break-after: avoid !important;
-}
-
 #receipt {
     width: 100%;
-    page-break-inside: avoid;
 }
 
 .center { text-align: center; }
@@ -33,6 +31,7 @@ table {
 
 td {
     padding: 1px 0;
+    vertical-align: top;
 }
 
 .line {
@@ -45,67 +44,82 @@ td {
 <body>
 <div id="receipt">
 
-<div class="center mb">
-    <strong>{{ $order->outlet->name }}</strong><br>
-    {{ $order->outlet->address }}
-</div>
+    {{-- LOGO --}}
+    <div class="center mb">
+        <img src="data:image/png;base64,{{ $logoBase64 }}" width="90">
+    </div>
 
-<div class="mb">
-    Order : {{ $order->order_code }}<br>
-    Tgl   : {{ $order->created_at->format('d/m/Y H:i') }}<br>
-    Kasir : {{ $order->payments->first()->created_by ?? '-' }}<br>
-    Cust  : {{ $order->customer->name ?? '-' }}
-</div>
+    {{-- OUTLET --}}
+    <div class="center mb">
+        <strong>{{ $order->outlet->name }}</strong><br>
+        {{ $order->outlet->address }}
+    </div>
 
-<div class="line"></div>
+    {{-- INFO --}}
+    <div class="mb">
+        Order : {{ $order->order_code }}<br>
+        Tgl   : {{ $order->created_at->format('d/m/Y H:i') }}<br>
+        Kasir : {{ $order->payments->first()->created_by ?? '-' }}<br>
+        Cust  : {{ $order->customer->name ?? '-' }}
+    </div>
 
-<table>
-@foreach($order->items as $item)
-<tr>
-    <td>{{ $item->menuItem->name }}</td>
-    <td class="right">{{ rupiah($item->total) }}</td>
-</tr>
-<tr>
-    <td></td>
-    <td class="right">{{ $item->qty }} x {{ rupiah($item->price) }}</td>
-</tr>
-@endforeach
-</table>
+    <div class="line"></div>
 
-<div class="line"></div>
+    {{-- ITEM --}}
+    <table>
+        @foreach($order->items as $item)
+        <tr>
+            <td>{{ $item->menuItem->name }}</td>
+            <td class="right">{{ rupiah($item->total) }}</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td class="right">
+                {{ $item->qty }} x {{ rupiah($item->price) }}
+            </td>
+        </tr>
+        @endforeach
+    </table>
 
-<table>
-<tr>
-    <td>Subtotal</td>
-    <td class="right">{{ rupiah($order->subtotal) }}</td>
-</tr>
-<tr>
-    <td>Diskon</td>
-    <td class="right">- {{ rupiah($order->discount_total ?? 0) }}</td>
-</tr>
-@if($order->reserved)
-<tr>
-    <td>DP</td>
-    <td class="right">- {{ rupiah($order->reserved->total_dp) }}</td>
-</tr>
-@endif
-<tr>
-    <td><strong>TOTAL</strong></td>
-    <td class="right"><strong>{{ rupiah($order->grand_total) }}</strong></td>
-</tr>
-</table>
+    <div class="line"></div>
 
-<div class="line"></div>
+    {{-- TOTAL --}}
+    <table>
+        <tr>
+            <td>Subtotal</td>
+            <td class="right">{{ rupiah($order->subtotal) }}</td>
+        </tr>
+        <tr>
+            <td>Diskon</td>
+            <td class="right">- {{ rupiah($order->discount_total ?? 0) }}</td>
+        </tr>
 
-<div class="mb">
-    Metode : {{ strtoupper($order->payments->first()->payment_method) }}<br>
-    Ref    : {{ $order->payments->first()->ref_no }}
-</div>
+        @if($order->reserved)
+        <tr>
+            <td>DP</td>
+            <td class="right">- {{ rupiah($order->reserved->total_dp) }}</td>
+        </tr>
+        @endif
 
-<div class="center">
-    === TERIMA KASIH ===<br>
-    Selamat Menikmati
-</div>
+        <tr>
+            <td><strong>TOTAL</strong></td>
+            <td class="right"><strong>{{ rupiah($order->grand_total) }}</strong></td>
+        </tr>
+    </table>
+
+    <div class="line"></div>
+
+    {{-- PAYMENT --}}
+    <div class="mb">
+        Metode : {{ strtoupper($order->payments->first()->payment_method) }}<br>
+        Ref    : {{ $order->payments->first()->ref_no }}
+    </div>
+
+    {{-- FOOTER --}}
+    <div class="center">
+        === TERIMA KASIH ===<br>
+        Selamat Menikmati
+    </div>
 
 </div>
 </body>
