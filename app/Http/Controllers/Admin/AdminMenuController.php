@@ -11,6 +11,7 @@ use App\Models\StockMovement;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Yajra\DataTables\DataTables;
 
 use Illuminate\Http\Request;
 
@@ -18,17 +19,40 @@ class AdminMenuController extends Controller
 {
     public function index()
     {
-        //outlet
-        $menus = MenuItem::with(['category', 'outlet'])
-        ->orderByDesc('is_active')
-        ->orderBy('name')
-        ->paginate(15);
-        
-
-
-        return view('admin.menu.index', compact('menus'));
+        return view('admin.menu.index');
     }
 
+    public function data(Request $request)
+    {
+        $query = MenuItem::with(['category', 'outlet'])
+            ->orderByDesc('is_active')
+            ->orderBy('name');
+
+        return DataTables::of($query)
+            ->addColumn('outlet', fn ($m) => $m->outlet->name ?? '-')
+            ->addColumn('category', fn ($m) => $m->category->name ?? '-')
+            ->addColumn('status', function ($m) {
+                return $m->is_active
+                    ? '<span class="badge bg-success">Aktif</span>'
+                    : '<span class="badge bg-secondary">Nonaktif</span>';
+            })
+            ->addColumn('aksi', function ($m) {
+                $edit = route('admin.menu.edit', $m);
+                $hapus = route('admin.menu.destroy', $m);
+
+                return "
+                    <a href='$edit' class='btn btn-sm btn-primary'>Edit</a>
+                    <form method='POST' action='$hapus'
+                        style='display:inline'
+                        onsubmit='return confirm(\"Hapus menu ini?\")'>
+                        ".csrf_field().method_field('DELETE')."
+                        <button class='btn btn-sm btn-danger'>Hapus</button>
+                    </form>
+                ";
+            })
+            ->rawColumns(['status','aksi'])
+            ->make(true);
+    }
     public function create()
     {
         $categories = Category::orderBy('name')->get();
