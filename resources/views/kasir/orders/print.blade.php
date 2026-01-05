@@ -125,8 +125,9 @@
 
 {{-- ================= PEMBAYARAN ================= --}}
 <div class="mb">
-    Metode : {{ strtoupper($order->payment_method) }}
-</div>
+        Metode : {{ strtoupper($order->payments->first()->payment_method) }}<br>
+        Ref    : {{ $order->payments->first()->ref_no }}
+    </div>
 
 {{-- ================= FOOTER ================= --}}
 {{-- <div class="center">
