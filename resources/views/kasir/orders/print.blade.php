@@ -50,10 +50,10 @@ td {
     </div> --}}
 
     {{-- OUTLET --}}
-    <div class="center mb">
+    {{-- <div class="center mb">
         <strong>{{ $order->outlet->name }}</strong><br>
         {{ $order->outlet->address }}
-    </div>
+    </div> --}}
 
     {{-- INFO --}}
     <div class="mb">
