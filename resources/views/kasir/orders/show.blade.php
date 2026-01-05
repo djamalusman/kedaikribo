@@ -77,10 +77,15 @@
                 <strong>Promo</strong><br>
                 {{ $order->promotion->name ?? '-' }}
             </div>
-            <div class="col-md-4">
-                <strong>Metode Pembayaran</strong><br>
-                {{ strtoupper($order->payments->first()->payment_method) ?? '-' }}
-            </div>
+          <div class="col-md-4">
+            <strong>Metode Pembayaran</strong><br>
+            @if ($order->payments->isNotEmpty())
+                {{ strtoupper($order->payments->first()->payment_method) }}
+            @else
+                -
+            @endif
+        </div>
+
             <div class="col-md-4">
                 <strong>Jumlah Dibayar</strong><br>
                 {{ $order->paid_amount !== null ? rupiah($order->paid_amount) : '-' }}
