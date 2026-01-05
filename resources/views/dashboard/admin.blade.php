@@ -78,9 +78,11 @@ LEFT CONTENT
                     <h5>Detail Order</h5>
                     <div class="row g-2 mb-3">
                         <div class="col-md-3">
+                            <label class="mt-2">Tanggal Mulai</label>
                             <input type="date" id="start_date" class="form-control">
                         </div>
                         <div class="col-md-3">
+                            <label class="mt-2">Tanggal Akhir</label>
                             <input type="date" id="end_date" class="form-control">
                         </div>
                         <div class="col-md-2">

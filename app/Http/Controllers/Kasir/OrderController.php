@@ -1387,6 +1387,21 @@ public function print(Order $order)
     return redirect()->to(asset('storage/struk/' . $fileName));
 }
 
+// public function print(Order $order)
+// {
+//     if ($order->payment_status !== 'paid') {
+//         abort(403, 'Order belum dibayar');
+//     }
+
+//     $order->load([
+//         'items.menuItem',
+//         'customer',
+//         'payments',
+//         'reserved',
+//     ]);
+
+//     return view('kasir.orders.print', compact('order'));
+// }
 
     
 }
