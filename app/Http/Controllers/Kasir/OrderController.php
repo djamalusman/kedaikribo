@@ -997,6 +997,7 @@ class OrderController extends Controller
         // 🔥 INI YANG PENTING
         return response()->json([
             'success'   => true,
+            'message'    => 'Pembayaran berhasil. Struk dicetak',
             'print_url'=> route('kasir.orders.print', $order),
         ]);
     }

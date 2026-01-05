@@ -216,7 +216,12 @@
                         </a>
                     </div>
                 </form>
-
+            @else
+                    <div class="col-md-2 d-flex align-items-end">
+                        <a href="{{ route('kasir.orders.index') }}" class="btn btn-light">
+                            &larr; back to list order
+                        </a>
+                    </div>
             @endif
         </div>
     </div>
