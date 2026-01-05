@@ -369,6 +369,7 @@ class OrderController extends Controller
             'table',
             'promotion',
             'reserved', // ⬅️ PENTING
+            'payments',
         ]);
 
         return view('kasir.orders.show', compact('order'));

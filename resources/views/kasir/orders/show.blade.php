@@ -79,7 +79,7 @@
             </div>
             <div class="col-md-4">
                 <strong>Metode Pembayaran</strong><br>
-                {{ $order->payment_method ?? '-' }}
+                {{ strtoupper($order->payments->first()->payment_method) ?? '-' }}
             </div>
             <div class="col-md-4">
                 <strong>Jumlah Dibayar</strong><br>
