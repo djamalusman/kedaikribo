@@ -226,10 +226,10 @@
         {{-- ================== TOMBOL SIMPAN ================== --}}
         <div class="d-flex justify-content-between mt-3">
             <a href="{{ route('kasir.orders.index') }}" class="btn btn-light">
-                &larr; Batal & Kembali
+               &larr; back to list order
             </a>
             <button type="submit" class="btn btn-primary">
-                Simpan Perubahan
+                Save Changes
             </button>
         </div>
     </form>

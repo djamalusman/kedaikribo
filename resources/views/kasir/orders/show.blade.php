@@ -207,8 +207,13 @@
                         <button type="submit"
                             id="btn-pay"
                             class="btn btn-success w-100">
-                            Tandai Lunas & Cetak
+                            Mark Paid & Print
                         </button>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <a href="{{ route('kasir.orders.index') }}" class="btn btn-light">
+                            &larr; back to list order
+                        </a>
                     </div>
                 </form>
 
