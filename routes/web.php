@@ -20,6 +20,7 @@ use App\Http\Controllers\CustomerLoyaltyController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\HomeController;
 
+
 Route::get('/', [HomeController::class, 'index'])
     ->middleware('auth');
 
