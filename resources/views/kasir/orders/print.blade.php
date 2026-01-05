@@ -45,9 +45,9 @@ td {
 <div id="receipt">
 
     {{-- LOGO --}}
-    <div class="center mb">
+    {{-- <div class="center mb">
         <img src="data:image/png;base64,{{ $logoBase64 }}" width="90">
-    </div>
+    </div> --}}
 
     {{-- OUTLET --}}
     <div class="center mb">
@@ -116,10 +116,10 @@ td {
     </div>
 
     {{-- FOOTER --}}
-    <div class="center">
+    {{-- <div class="center">
         === TERIMA KASIH ===<br>
         Selamat Menikmati
-    </div>
+    </div> --}}
 
 </div>
 </body>
