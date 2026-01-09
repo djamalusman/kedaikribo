@@ -21,57 +21,177 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Yajra\DataTables\DataTables;
 
 class OrderController extends Controller
 {
+    // public function index(Request $request)
+    // {
+        
+    //     $user  = Auth::user();
+    //     $today = now()->toDateString();
+
+    //     // Filter periode untuk RIWAYAT
+    //     $from = $request->input('from_date', $today);
+    //     $to   = $request->input('to_date', $today);
+
+    //     // -------- OPEN BILL (status open) --------
+    //     $openOrders = Order::with(['customer', 'table','payments'])
+    //         ->where('cashier_id', $user->id)
+    //         // ->where('status', 'open')
+    //         ->orderByDesc('order_date')
+    //         ->get();
+    //     // dd($openOrders);
+    //     // -------- RIWAYAT (status paid) + filter tanggal --------
+    //     $historyQuery = Order::with(['customer', 'table','payments'])
+    //         ->where('cashier_id', $user->id)
+    //         ->where('status', 'paid')
+    //         ->whereBetween('order_date', [
+    //             $from . ' 00:00:00',
+    //             $to   . ' 23:59:59',
+    //         ]);
+
+    //     $historyOrders = $historyQuery
+    //         ->orderByDesc('order_date')
+    //         ->paginate(20)
+    //         ->withQueryString(); // biar from/to tetap di query string
+
+    //     $totalTransactions = (clone $historyQuery)->count();
+    //     $totalRevenue      = (clone $historyQuery)->sum('grand_total');
+
+    //     // Tab aktif (bisa dikirim via ?tab=history)
+    //     $activeTab = $request->input('tab', 'open');
+
+    //     return view('kasir.orders.index', compact(
+    //         'openOrders',
+    //         'historyOrders',
+    //         'from',
+    //         'to',
+    //         'totalTransactions',
+    //         'totalRevenue',
+    //         'activeTab',
+    //     ));
+    // }
+
+
     public function index(Request $request)
     {
-        
-        $user  = Auth::user();
         $today = now()->toDateString();
 
-        // Filter periode untuk RIWAYAT
-        $from = $request->input('from_date', $today);
-        $to   = $request->input('to_date', $today);
-
-        // -------- OPEN BILL (status open) --------
-        $openOrders = Order::with(['customer', 'table','payments'])
-            ->where('cashier_id', $user->id)
-            // ->where('status', 'open')
-            ->orderByDesc('order_date')
-            ->get();
-        // dd($openOrders);
-        // -------- RIWAYAT (status paid) + filter tanggal --------
-        $historyQuery = Order::with(['customer', 'table','payments'])
-            ->where('cashier_id', $user->id)
-            ->where('status', 'paid')
-            ->whereBetween('order_date', [
-                $from . ' 00:00:00',
-                $to   . ' 23:59:59',
-            ]);
-
-        $historyOrders = $historyQuery
-            ->orderByDesc('order_date')
-            ->paginate(20)
-            ->withQueryString(); // biar from/to tetap di query string
-
-        $totalTransactions = (clone $historyQuery)->count();
-        $totalRevenue      = (clone $historyQuery)->sum('grand_total');
-
-        // Tab aktif (bisa dikirim via ?tab=history)
-        $activeTab = $request->input('tab', 'open');
-
-        return view('kasir.orders.index', compact(
-            'openOrders',
-            'historyOrders',
-            'from',
-            'to',
-            'totalTransactions',
-            'totalRevenue',
-            'activeTab',
-        ));
+        return view('kasir.orders.index', [
+            'from'      => $request->from_date ?? $today,
+            'to'        => $request->to_date ?? $today,
+            'activeTab' => $request->tab ?? 'open',
+        ]);
     }
 
+        /**
+     * OPEN BILL (SERVER SIDE)
+     */
+    public function openData(Request $request)
+    {
+        $user = Auth::user();
+
+        $query = Order::with(['customer', 'table'])
+            ->where('cashier_id', $user->id)
+            ->orderByDesc('order_date');
+
+        return DataTables::of($query)
+            ->addColumn('tanggal', fn ($o) =>
+                optional($o->order_date)->format('d/m/Y H:i')
+            )
+            ->addColumn('kode', fn ($o) => $o->order_code)
+            ->addColumn('customer', function ($o) {
+                if (!$o->customer) return '-';
+                $phone = $o->customer->phone
+                    ? "<br><small class='text-muted'>{$o->customer->phone}</small>"
+                    : '';
+                return $o->customer->name . $phone;
+            })
+            ->addColumn('tipe_meja', function ($o) {
+                $type = strtoupper(str_replace('_', ' ', $o->order_type));
+                return $o->table
+                    ? "$type<br><small class='text-muted'>Meja: {$o->table->name}</small>"
+                    : $type;
+            })
+            ->addColumn('total', fn ($o) =>
+                rupiah($o->grand_total ?? $o->subtotal)
+            )
+            ->addColumn('status', fn ($o) => strtoupper($o->status))
+            ->addColumn('aksi', function ($o) {
+                $detail = route('kasir.orders.show', $o);
+                $edit   = route('kasir.orders.edit', $o);
+
+                // 🔥 IF / ELSE PINDAH KE CONTROLLER
+                if ($o->status === 'paid') {
+                    $print = route('kasir.orders.print', $o);
+                    return "
+                        <a href='$detail' class='btn btn-sm btn-outline-primary'>Detail</a>
+                        <a href='$print' target='_blank'
+                           class='btn btn-sm btn-outline-secondary'>Cetak</a>
+                    ";
+                }
+
+                return "
+                    <a href='$detail' class='btn btn-sm btn-outline-primary'>Detail / Bayar</a>
+                    <a href='$edit' class='btn btn-sm btn-outline-secondary'>Edit</a>
+                ";
+            })
+            ->rawColumns(['customer', 'tipe_meja', 'aksi'])
+            ->make(true);
+    }
+
+
+    /**
+     * RIWAYAT (SERVER SIDE)
+     */
+    public function historyData(Request $request)
+    {
+        $user = Auth::user();
+
+        $query = Order::with(['customer', 'table', 'payments'])
+            ->where('cashier_id', $user->id)
+            ->where('status', 'paid');
+
+        // 🔥 FILTER DARI FORM
+        if ($request->from_date && $request->to_date) {
+            $query->whereBetween('order_date', [
+                $request->from_date . ' 00:00:00',
+                $request->to_date   . ' 23:59:59',
+            ]);
+        }
+
+        return DataTables::of($query)
+            ->addColumn('tanggal', fn ($o) =>
+                optional($o->order_date)->format('d/m/Y H:i')
+            )
+            ->addColumn('kode', fn ($o) => $o->order_code)
+            ->addColumn('customer', function ($o) {
+                if (!$o->customer) return '-';
+                $phone = $o->customer->phone
+                    ? "<br><small class='text-muted'>{$o->customer->phone}</small>"
+                    : '';
+                return $o->customer->name . $phone;
+            })
+            ->addColumn('tipe_meja', function ($o) {
+                $type = strtoupper(str_replace('_', ' ', $o->order_type));
+                return $o->table
+                    ? "$type<br><small class='text-muted'>Meja: {$o->table->name}</small>"
+                    : $type;
+            })
+            ->addColumn('metode', fn ($o) =>
+                strtoupper($o->payments->first()->payment_method ?? '-')
+            )
+            ->addColumn('total', fn ($o) => rupiah($o->grand_total))
+            ->addColumn('aksi', function ($o) {
+                $detail = route('kasir.orders.show', $o);
+                return "<a href='$detail' class='btn btn-sm btn-outline-primary'>
+                            Detail / Bayar
+                        </a>";
+            })
+            ->rawColumns(['customer', 'tipe_meja', 'aksi'])
+            ->make(true);
+    }
 
     /**
      * FORM CREATE – POS / Transaksi baru

@@ -128,6 +128,13 @@ Route::middleware('auth')->group(function () {
         Route::get('kasir/dashboard/{order}/items', [AdminDashboardController::class, 'items'])
             ->name('kasir.dashboard.items');
 
+
+        Route::get('/kasir/orders/open-data', [OrderController::class, 'openData'])
+            ->name('kasir.orders.openData');
+
+        Route::get('/kasir/orders/history-data', [OrderController::class, 'historyData'])
+            ->name('kasir.orders.historyData');
+
         // POS / Order
 
         Route::put('kasir/orders/{order}/reserved',[OrderController::class, 'updateReserved'])
