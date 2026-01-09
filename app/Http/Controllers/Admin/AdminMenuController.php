@@ -90,12 +90,30 @@ class AdminMenuController extends Controller
             }
 
             // 📤 Upload image
+            // if ($request->hasFile('image')) {
+            //     $file = $request->file('image');
+            //     $filename = uniqid().'_'.$file->getClientOriginalName();
+            //     $file->storeAs('menu', $filename, 'public');
+            //     $data['image'] = $filename;
+            // }
+
             if ($request->hasFile('image')) {
+
                 $file = $request->file('image');
                 $filename = uniqid().'_'.$file->getClientOriginalName();
-                $file->storeAs('menu', $filename, 'public');
+
+                $targetDir = base_path('../public_html/storage/menu');
+
+                if (!is_dir($targetDir)) {
+                    mkdir($targetDir, 0755, true);
+                }
+
+                // SIMPAN LANGSUNG KE public_html
+                $file->move($targetDir, $filename);
+
                 $data['image'] = $filename;
             }
+
 
             // ===== JIKA AMBIL DARI STOCK =====
             if (!empty($data['namestock'])) {
@@ -233,18 +251,43 @@ class AdminMenuController extends Controller
         $data['is_active'] = $request->boolean('is_active');
 
         /* ================= IMAGE ================= */
+        // if ($request->hasFile('image')) {
+
+        //     if ($menu->image) {
+        //         Storage::disk('public')->delete('menu/'.$menu->image);
+        //     }
+
+        //     $file = $request->file('image');
+        //     $filename = uniqid().'_'.$file->getClientOriginalName();
+        //     $file->storeAs('menu', $filename, 'public');
+
+        //     $data['image'] = $filename;
+        // }
+
         if ($request->hasFile('image')) {
 
-            if ($menu->image) {
-                Storage::disk('public')->delete('menu/'.$menu->image);
+            // hapus image lama
+            if (!empty($menu->image)) {
+                $old = 		base_path('../public_html/storage/menu/'.	$menu->image);
+                if (file_exists($old)) {
+                    @unlink($old);
+                }
             }
 
             $file = $request->file('image');
-            $filename = uniqid().'_'.$file->getClientOriginalName();
-            $file->storeAs('menu', $filename, 'public');
+            $filename = uniqid().'_'.$file->	getClientOriginalName();
+
+            $targetDir = 	base_path('../public_html/storage/menu');
+
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0755, true);
+            }
+
+            $file->move($targetDir, $filename);
 
             $data['image'] = $filename;
         }
+
 
         /* ================= LOGIC STOCK ================= */
 

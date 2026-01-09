@@ -131,12 +131,7 @@ class StockMovementController extends Controller
 
     public function destroy(StockMovement $stock_movement)
     {
-        DB::transaction(function () use ($stock_movement) {
-            // Balikkan efek stok
-            $stock_movement->revertFromIngredient();
-
-            $stock_movement->delete();
-        });
+        $stock_movement->delete();
 
         return redirect()->route('admin.stock-movements.index')
             ->with('success', 'Pergerakan stok berhasil dihapus.');

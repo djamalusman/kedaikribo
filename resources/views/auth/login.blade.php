@@ -39,7 +39,7 @@
 
         <div class="info-text login">
             <h2 class="animation" style="--i:0; --j:20">Welcome Back!</h2>
-            <p class="animation" style="--i:1; --j:21">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
+            <p class="animation" style="--i:1; --j:21">enjoy your business</p>
         </div>
     </div>
     <!--Script.js-->
