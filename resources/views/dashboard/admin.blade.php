@@ -125,14 +125,18 @@ LEFT CONTENT
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        {{ strtoupper($order->payment_method ?? '-') }}
+                                        @if ($order->payments->isNotEmpty())
+                                            {{ strtoupper($order->payments->first()->payment_method) }}
+                                        @else
+                                            -
+                                        @endif
                                     </td>
                                     <td class="text-end">
                                         {{ rupiah($order->grand_total) }}
                                     </td>
                                     <td class="text-end">
-                                         <a href="{{ route('admin.dashboard.show', $order) }}"
-                                           class="btn btn-sm btn-outline-primary" target="_blank">
+                                        <a href="{{ route('admin.dashboard.show', $order) }}"
+                                            class="btn btn-sm btn-outline-primary" target="_blank">
                                             Detail
                                         </a>
                                     </td>
@@ -150,7 +154,7 @@ LEFT CONTENT
             </div>
 
         </div>
-        
+
 
         {{-- =======================
 RIGHT SIDEBAR
@@ -370,18 +374,17 @@ RIGHT SIDEBAR
 
 
     <script>
-    function exportExcel() {
-        const start = document.getElementById('start_date').value;
-        const end   = document.getElementById('end_date').value;
+        function exportExcel() {
+            const start = document.getElementById('start_date').value;
+            const end = document.getElementById('end_date').value;
 
-        if (!start || !end) {
-            alert('Pilih tanggal awal dan akhir');
-            return;
+            if (!start || !end) {
+                alert('Pilih tanggal awal dan akhir');
+                return;
+            }
+
+            const url = `{{ route('admin.dashboard.export.excel') }}?start_date=${start}&end_date=${end}`;
+            window.open(url, '_blank'); // 🔥 download langsung
         }
-
-        const url = `{{ route('admin.dashboard.export.excel') }}?start_date=${start}&end_date=${end}`;
-        window.open(url, '_blank'); // 🔥 download langsung
-    }
     </script>
-
 @endsection

@@ -52,7 +52,8 @@ class AdminDashboardController extends Controller
             'outlet',
             'cashier',
             'customer',
-            'items.menuItem'
+            'items.menuItem',
+            'payments',
         ])
         ->where('outlet_id', 1)
         ->orderBy('order_date', 'desc')
@@ -325,6 +326,7 @@ class AdminDashboardController extends Controller
             'table',
             'promotion',
             'reserved',
+            'payments',
         ]);
 
         return view('admin.detailorder', compact('order','user'));
