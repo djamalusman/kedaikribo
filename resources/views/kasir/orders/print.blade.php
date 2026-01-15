@@ -91,7 +91,9 @@
         Order : {{ $order->order_code }}<br>
         Tgl : {{ $order->order_date?->format('d/m/Y H:i') }}<br>
         Kasir : {{ auth()->user()->name ?? '-' }}<br>
-        Customer : {{ $order->customer->name ?? '-' }}
+        Customer : {{ $order->customer->name ?? '-' }}<br>
+        Tipe Order : {{ ucwords(str_replace('_', ' ', $order->order_type)) }}
+
     </div>
 
     <hr>

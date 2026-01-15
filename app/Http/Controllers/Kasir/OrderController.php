@@ -432,7 +432,7 @@ class OrderController extends Controller
                             'order_id'   => $order->id,
                             'created_at' => now(),
                             'updated_at' => now(),
-                            'cafe_tables_id' => $table->id,
+                            'cafe_tables_id' => $data['order_type'] === 'dine_in' ? $table->id : null,
                         ]);
                     }
 
@@ -630,243 +630,72 @@ class OrderController extends Controller
     }
 
 
-    /**
-     * UPDATE – Edit header + customer + cart + promo
-     */
-        // public function update(Request $request, Order $order)
-            // {
-                
-            //     if ($request->filled('nominal_dp')) {
-            //         $request->merge([
-            //             'nominal_dp' => preg_replace('/[^0-9]/', '', $request->nominal_dp),
-            //         ]);
-            //     }
-                
-
-            //     $this->authorizeOrderForKasir($order);
-
-            //     $data = $request->validate([
-            //         'order_type'   => 'required|in:dine_in,take_away,delivery',
-            //         'table_id'     => 'nullable|exists:cafe_tables,id',
-
-            //         'customer_name'  => 'nullable|string|max:150',
-            //         'customer_phone' => 'nullable|string|max:50',
-            //         'customer_email' => 'nullable|email|max:150',
-
-
-            //         'nominal_dp' => 'nullable|string|numeric|min:0',
-            //         'start_date' => 'nullable|date',
-            //         'end_date'   => 'nullable|date|after:start_date',
-            //          'table_id'   => 'required|exists:cafe_tables,id',
-
-            //         'cart'                => 'required|array|min:1',
-            //         'cart.*.menu_item_id' => 'required|exists:menu_items,id',
-            //         'cart.*.name'         => 'required|string',
-            //         'cart.*.qty'          => 'required|integer|min:1',
-            //         'cart.*.price'        => 'required|numeric|min:0',
-
-            //         'promotion_id'        => 'nullable|exists:promotions,id',
-            //     ]);
-
-            //     // 1. Hitung kembali diskon per item
-            //     $promo = !empty($data['promotion_id'])
-            //         ? Promotion::find($data['promotion_id'])
-            //         : null;
-
-            //     $calc = $this->calculateItemsWithDiscount($data['cart'], $promo);
-
-            //     DB::transaction(function () use ($order, $data, $promo, $calc) {
-
-            //         $oldTableId   = $order->table_id;
-            //         $oldOrderType = $order->order_type;
-
-            //         // 2. Update / buat customer
-            //         $customerId = $order->customer_id;
-
-            //         if (
-            //             !empty($data['customer_name']) ||
-            //             !empty($data['customer_phone']) ||
-            //             !empty($data['customer_email'])
-            //         ) {
-            //             if ($customerId && $order->customer) {
-            //                 // update customer existing
-            //                 $order->customer->update([
-            //                     'name'  => $data['customer_name'] ?: $order->customer->name,
-            //                     'phone' => $data['customer_phone'] ?: $order->customer->phone,
-            //                     'email' => $data['customer_email'] ?: $order->customer->email,
-            //                 ]);
-            //             } else {
-            //                 $customer = Customer::create([
-            //                     'name'  => $data['customer_name'] ?: 'Customer',
-            //                     'phone' => $data['customer_phone'] ?: null,
-            //                     'email' => $data['customer_email'] ?: null,
-            //                 ]);
-            //                 $customerId = $customer->id;
-            //             }
-            //         } else {
-            //             $customerId = null;
-            //         }
-
-
-
-            //         // 3. Update header order
-            //         $order->update([
-            //             'customer_id'    => $customerId,
-            //             'order_type'     => $data['order_type'],
-            //             'table_id'       => $data['order_type'] === 'dine_in' ? $data['table_id'] : null,
-            //             'promotion_id'   => $promo?->id,
-            //             'subtotal'       => $calc['subtotal'],
-            //             'discount_total' => $calc['discount_total'],
-            //             'grand_total'    => $calc['grand_total'],
-            //         ]);
-
-            //         // 4. Reset detail lama
-            //         $order->items()->delete();
-
-            //         // 5. Insert ulang detail baru dengan discount per item
-            //         $itemsData = [];
-            //         foreach ($calc['items'] as $itemRow) {
-            //             $itemsData[] = array_merge($itemRow, [
-            //                 'order_id'   => $order->id,
-            //                 'created_at' => now(),
-            //                 'updated_at' => now(),
-            //             ]);
-            //         }
-            //         $order->items()->insert($itemsData);
-
-
-            //         if (empty($request->is_reserved)) {
-            //             // jika tidak reserved → hapus data reserved
-            //             Reserved::where('order_id', $order->id)->delete();
-            //         } else {
-            //             // validasi minimal untuk reserved
-            //             if (
-            //                 !empty($request->is_reserved) &&
-            //                 !empty($data['table_id']) &&
-            //                 !empty($request->start_date) &&
-            //                 !empty($request->end_date)
-            //             ) {
-            //                 Reserved::updateOrCreate(
-            //                     ['order_id' => $order->id],
-            //                     [
-            //                         'cafe_tables_id' => $data['table_id'],
-            //                         'total_dp'       => $request->nominal_dp ?? 0,
-            //                         'start_date'     => $request->start_date,
-            //                         'end_date'       => $request->end_date,
-            //                     ]
-            //                 );
-
-            //                 CafeTable::where('id', $data['table_id'])
-            //                     ->update(['status' => 'reserved']);
-            //             }
-            //         }
-
-                    
-            //         // 6. Update status meja jika tipe/order meja berubah
-            //         if ($oldOrderType === 'dine_in' && $oldTableId && $order->order_type !== 'dine_in') {
-            //             $oldTable = CafeTable::find($oldTableId);
-            //             if ($oldTable) {
-            //                 $oldTable->status = 'available';
-            //                 $oldTable->save();
-            //             }
-            //         }
-            //         if ($order->order_type === 'dine_in' && $order->table_id) {
-            //             $newTable = CafeTable::find($order->table_id);
-            //             if ($newTable) {
-            //                 $newTable->status = 'occupied';
-            //                 $newTable->save();
-            //             }
-            //         }
-            //     });
-
-            //     return redirect()
-            //         ->route('kasir.orders.show', $order)
-            //         ->with('success', 'Order berhasil diupdate dengan diskon per item.');
-        // }
-
-        public function update(Request $request, Order $order)
-        {
-           
-
-            $this->authorizeOrderForKasir($order);
-
-            // Bersihkan DP
-            if ($request->filled('nominal_dp')) {
-                $request->merge([
-                    'nominal_dp' => preg_replace('/[^0-9]/', '', $request->nominal_dp),
-                ]);
-            }
-
-            $data = $request->validate([
-                'order_type'   => 'required|in:dine_in,take_away,delivery',
-                'table_id'     => 'nullable|exists:cafe_tables,id',
-
-                'customer_name'  => 'nullable|string|max:150',
-                'customer_phone' => 'nullable|string|max:50',
-                'customer_email' => 'nullable|email|max:150',
-
-                'nominal_dp' => 'nullable|numeric|min:0',
-
-                'cart'                => 'required|array|min:1',
-                'cart.*.menu_item_id' => 'required|exists:menu_items,id',
-                'cart.*.qty'          => 'required|integer|min:1',
-                'cart.*.price'        => 'required|numeric|min:0',
-
-                'promotion_id'        => 'nullable|exists:promotions,id',
+    public function update(Request $request, Order $order)
+    {
+       
+        $this->authorizeOrderForKasir($order);
+        // Bersihkan DP
+        if ($request->filled('nominal_dp')) {
+            $request->merge([
+                'nominal_dp' => preg_replace('/[^0-9]/', '', $request->nominal_dp),
             ]);
-
-            // 🔥 HITUNG ULANG DI BACKEND (SUMBER KEBENARAN)
-            $promo = !empty($data['promotion_id'])
-                ? Promotion::find($data['promotion_id'])
-                : null;
-
-                
-            $calc = $this->calculateItemsWithDiscount($data['cart'], $promo);
-            
-            DB::transaction(function () use ($order, $data, $promo, $calc, $request) {
-
-                // Update order header
-                $order->update([
-                    'order_type'     => $data['order_type'],
-                    'table_id'       => $data['order_type'] === 'dine_in' ? $data['table_id'] : null,
-                    'promotion_id'   => $promo?->id,
-                    'subtotal'       => $calc['subtotal'],
-                    'discount_total' => $calc['discount_total'], // ✅ DARI BACKEND
-                    'grand_total'    => $calc['grand_total'],
-                ]);
-
-                // Reset items
-                $order->items()->delete();
-
-                // Insert ulang items
-                foreach ($calc['items'] as $row) {
-                    $order->items()->create($row);
-                }
-
-                // Reserved
-                if ($request->is_reserved) {
-                    Reserved::updateOrCreate(
-                        ['order_id' => $order->id], // kondisi
-                        [
-                            'cafe_tables_id' => $data['table_id'],
-                            'total_dp'       => $request->nominal_dp ?? 0,
-                            'start_date'     => $request->start_date,
-                            'end_date'       => $request->end_date,
-                            'status'         => 1
-                        ]
-                    );
-                        CafeTable::where('id', $data['table_id'])
-                            ->update(['status' => 'reserved']);
-                } else {
-                    Reserved::where('order_id', $order->id)->delete();
-                }
-
-            });
-
-            return redirect()
-                ->route('kasir.orders.show', $order)
-                ->with('success', 'Order berhasil diupdate.');
         }
+        $data = $request->validate([
+            'order_type'   => 'required|in:dine_in,take_away,delivery',
+            'table_id'     => 'nullable|exists:cafe_tables,id',
+            'customer_name'  => 'nullable|string|max:150',
+            'customer_phone' => 'nullable|string|max:50',
+            'customer_email' => 'nullable|email|max:150',
+            'nominal_dp' => 'nullable|numeric|min:0',
+            'cart'                => 'required|array|min:1',
+            'cart.*.menu_item_id' => 'required|exists:menu_items,id',
+            'cart.*.qty'          => 'required|integer|min:1',
+            'cart.*.price'        => 'required|numeric|min:0',
+            'promotion_id'        => 'nullable|exists:promotions,id',
+        ]);
+        // 🔥 HITUNG ULANG DI BACKEND (SUMBER KEBENARAN)
+        $promo = !empty($data['promotion_id'])
+            ? Promotion::find($data['promotion_id'])
+            : null;
+        $calc = $this->calculateItemsWithDiscount($data['cart'], $promo);
+        DB::transaction(function () use ($order, $data, $promo, $calc, $request) {
+            // Update order header
+            $order->update([
+                'order_type'     => $data['order_type'],
+                'table_id'       => $data['order_type'] === 'dine_in' ? $data['table_id'] : null,
+                'promotion_id'   => $promo?->id,
+                'subtotal'       => $calc['subtotal'],
+                'discount_total' => $calc['discount_total'], // ✅ DARI BACKEND
+                'grand_total'    => $calc['grand_total'],
+            ]);
+            // Reset items
+            $order->items()->delete();
+            // Insert ulang items
+            foreach ($calc['items'] as $row) {
+                $order->items()->create($row);
+            }
+            // Reserved
+            if ($request->is_reserved) {
+                Reserved::updateOrCreate(
+                    ['order_id' => $order->id], // kondisi
+                    [
+                        'cafe_tables_id' => $data['table_id'],
+                        'total_dp'       => $request->nominal_dp ?? 0,
+                        'start_date'     => $request->start_date,
+                        'end_date'       => $request->end_date,
+                        'status'         => 1
+                    ]
+                );
+                    CafeTable::where('id', $data['table_id'])
+                        ->update(['status' => 'reserved']);
+            } else {
+                Reserved::where('order_id', $order->id)->delete();
+            }
+        });
+        return redirect()
+            ->route('kasir.orders.show', $order)
+            ->with('success', 'Order berhasil diupdate.');
+    }
 
     /**
      * Helper: hitung diskon dari promo
@@ -972,110 +801,7 @@ class OrderController extends Controller
     }
 
 
-    // public function pay(Request $request, Order $order)
-    // {
-        
-    //     // $this->authorizeOrderForKasir($order);
-
-    //     if ($order->payment_status === 'paid') {
-    //         return redirect()->route('kasir.orders.show', $order)
-    //             ->with('error', 'Order ini sudah dibayar.');
-    //     }
-
-    //     $data = $request->validate([
-    //         'payment_method' => 'required|in:cash,qris,transfer',
-    //         'paid_amount'    => 'required|numeric|min:0',
-    //         'reference_no'   => 'nullable|string|max:100',
-    //         'is_reserved'   => 'nullable|string|max:100',
-    //     ]);
-       
-    //     DB::transaction(function () use ($order, $data) {
-            
-    //         // -------- 1) buat nomor resi auto -----------
-    //         $referenceNo = $data['reference_no'] ?: (
-    //             'PAY-' . now()->format('YmdHis') . '-' . $order->id
-    //         );
-
-    //         // -------- 2) insert ke payments -------------
-    //         Payment::create([
-    //             'order_id'     => $order->id,
-    //             'payment_method'       => $data['payment_method'],
-    //             'amount'       => $data['paid_amount'],
-    //             'ref_no' => $referenceNo,
-    //             'paid_at'      => now(),
-    //         ]);
-
-    //         // -------- 3) update summary di orders -------
-    //         $order->update([
-    //             'status'         => 'paid',
-    //             'payment_status' => 'paid',
-    //         ]);
-
-    //         // -------- 4) loyalty point (earn) -----------
-    //         if ($order->customer_id) {
-    //             $points = (int) floor($order->grand_total / 10000); // 1 poin per 10rb
-
-    //             if ($points > 0) {
-    //                 LoyaltyPoint::create([
-    //                     'customer_id' => $order->customer_id,
-    //                     'order_id'    => $order->id,
-    //                     'points'      => $points,
-    //                     'type'        => 'earn',
-    //                     'description' => 'Pembelian order ' . $order->order_code,
-    //                 ]);
-    //             }
-    //         }
-    //         // -------- 5) kalau dine in atau reseved, meja jadi available ----
-    //         $table = $order->table;
-    //         if ($order->order_type === 'dine_in' && $order->table_id &&  $data['is_reserved'] !="reserved" ) {
-                
-    //             if ($table) {
-    //                 $table->status = 'occupied';
-    //                 $table->save();
-    //             }
-    //         }
-    //         // ambil semua item dalam order
-    //         $orderItems = OrderItem::where('order_id', $order->id)->get();
-
-    //         foreach ($orderItems as $item) {
-
-    //             // ambil menu
-    //             $menu = MenuItem::find($item->menu_item_id);
-
-    //             if ($menu && $menu->stock_id !== null) {
-
-    //                 // ambil stock
-    //                 $stock = StockMovement::find($menu->stock_id);
-
-    //                 if ($stock) {
-
-    //                     // hitung sisa stock
-    //                     $sisaQty = $stock->qty - $item->qty;
-
-    //                     // update stock
-    //                     $stock->update([
-    //                         'qty' => $sisaQty
-    //                     ]);
-
-    //                     if ($table) {
-    //                         $table->status = 'occupied';
-    //                         $table->save();
-    //                     }
-    //                 }
-    //             }
-    //         }
-
-    //     });
-
-    //     // return redirect()
-    //     // ->route('kasir.orders.index', $order)
-    //     // ->with('success', 'Pembayaran berhasil. Struk dicetak.');
-    //       return response()->json([
-    //         'success'    => true,
-    //         'print_url' => route('kasir.orders.print', $order),
-    //     ]);
-    // }
-
+    
     public function pay(Request $request, Order $order)
     {
         $this->authorizeOrderForKasir($order);
@@ -1129,260 +855,7 @@ class OrderController extends Controller
         return view('kasir.orders.after_pay', compact('order'));
     }
 
-    // public function print(Order $order)
-    // {
-    //     $this->authorizeOrderForKasir($order);
-
-    //     $order->load([
-    //         'items.menuItem',
-    //         'customer',
-    //         'table',
-    //         'promotion',
-    //         'reserved',
-    //         'outlet',
-    //     ]);
-
-    //     $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
-    //         ->setPaper('A4', 'portrait');
-
-    //     return $pdf->stream('struk-'.$order->order_code.'.pdf');
-    // }
-
-
-    // public function print(Order $order)
-    // {
-    //     $order->load([
-    //         'items.menuItem',
-    //         'customer',
-    //         'table',
-    //         'promotion',
-    //         'reserved',
-    //         'outlet',
-    //         'payments',
-    //     ]);
-
-    //     // ⚠️ PENTING
-    //     // JANGAN DomPDF
-    //     // HARUS HTML agar RawBT bisa menangkap print
-
-    //     return view('kasir.orders.print', compact('order'));
-    // }
-
-
-    // public function print(Order $order)
-    // {
-    //     $order->load([
-    //         'items.menuItem',
-    //         'customer',
-    //         'table',
-    //         'promotion',
-    //         'reserved',
-    //         'outlet',
-    //         'payments',
-    //     ]);
-
-    //     $paperWidth  = 164; // 58mm
-    //     $baseHeight  = 180;
-    //     $lineHeight  = 16;
-    //     $lines       = 0;
-
-    //     foreach ($order->items as $item) {
-    //         $nameLines = ceil(strlen($item->menuItem->name) / 18);
-    //         $lines += max(1, $nameLines);
-    //     }
-
-    //     $lines += 8;
-    //     $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
-
-    //     $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
-    //         ->setPaper([0, 0, $paperWidth, $paperHeight]);
-
-    //     return $pdf->stream('struk-'.$order->order_code.'.pdf');
-    // }
-
-
-    // versi windows dan simpan di storage
-    // public function print(Order $order)
-    // {
-    //     $fileName = 'struk-'.$order->order_code.'.pdf';
-    //     $path     = 'struk/'.$fileName;
-
-    //     // ✅ 1. Kalau file SUDAH ADA → langsung buka
-    //     if (Storage::disk('public')->exists($path)) {
-    //         return redirect()->to(asset('storage/'.$path));
-    //     }
-
-    //     // ⛏️ 2. Kalau BELUM ADA → baru generate
-    //     $order->load([
-    //         'items.menuItem',
-    //         'customer',
-    //         'table',
-    //         'promotion',
-    //         'reserved',
-    //         'outlet',
-    //         'payments',
-    //     ]);
-
-    //     $paperWidth  = 164;
-    //     $baseHeight  = 180;
-    //     $lineHeight  = 16;
-    //     $lines       = 0;
-
-    //     foreach ($order->items as $item) {
-    //         $nameLines = ceil(strlen($item->menuItem->name) / 18);
-    //         $lines += max(1, $nameLines);
-    //     }
-
-    //     $lines += 8;
-    //     $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
-
-    //     $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
-    //         ->setPaper([0, 0, $paperWidth, $paperHeight]);
-
-    //     Storage::disk('public')->put($path, $pdf->output());
-
-    //     return redirect()->to(asset('storage/'.$path));
-    // }
-
-    // versi linux dan simpan di public_html
-    // public function print(Order $order)
-    // {
-    //     // ===============================
-    //     // 1️⃣ VALIDASI STATUS (OPSIONAL TAPI DISARANKAN)
-    //     // ===============================
-    //     if ($order->payment_status !== 'paid') {
-    //         abort(403, 'Order belum dibayar');
-    //     }
-
-    //     // ===============================
-    //     // 2️⃣ NAMA FILE
-    //     // ===============================
-    //     $fileName = 'struk-'.$order->order_code.'.pdf';
-
-    //     // ===============================
-    //     // 3️⃣ PATH AMAN UNTUK SHARED HOSTING
-    //     // ===============================
-    //     // Ini otomatis menunjuk ke public_html
-    //     $documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
-
-    //     // Folder tujuan (HARUS SUDAH ADA)
-    //     $storagePath = $documentRoot.'/storage/struk';
-
-    //     // Full path file
-    //     $fullPath = $storagePath.'/'.$fileName;
-
-    //     // URL public PDF
-    //     $publicUrl = asset('storage/struk/'.$fileName);
-
-    //     // ===============================
-    //     // 4️⃣ JIKA FILE SUDAH ADA → LANGSUNG BUKA
-    //     // ===============================
-    //     if (file_exists($fullPath)) {
-    //         return redirect()->to($publicUrl);
-    //     }
-
-    //     // ===============================
-    //     // 5️⃣ LOAD DATA ORDER
-    //     // ===============================
-    //     $order->load([
-    //         'items.menuItem',
-    //         'customer',
-    //         'table',
-    //         'promotion',
-    //         'reserved',
-    //         'outlet',
-    //         'payments',
-    //     ]);
-
-    //     // ===============================
-    //     // 6️⃣ HITUNG TINGGI KERTAS
-    //     // ===============================
-    //     $paperWidth  = 164; // 58mm
-    //     $baseHeight  = 180;
-    //     $lineHeight  = 16;
-    //     $lines       = 0;
-
-    //     foreach ($order->items as $item) {
-    //         $nameLines = ceil(strlen($item->menuItem->name) / 18);
-    //         $lines += max(1, $nameLines);
-    //     }
-
-    //     $lines += 8;
-    //     $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
-
-    //     // ===============================
-    //     // 7️⃣ GENERATE PDF
-    //     // ===============================
-    //     $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
-    //         ->setPaper([0, 0, $paperWidth, $paperHeight]);
-
-    //     // ===============================
-    //     // 8️⃣ SIMPAN PDF (TANPA mkdir)
-    //     // ===============================
-    //     file_put_contents($fullPath, $pdf->output());
-
-    //     // ===============================
-    //     // 9️⃣ BUKA PDF DI TAB BARU
-    //     // ===============================
-    //     return redirect()->to($publicUrl);
-    // }
-
-    // public function print(Order $order)
-    // {
-    //     // 🔒 keamanan dasar
-    //     if ($order->payment_status !== 'paid') {
-    //         abort(403, 'Order belum dibayar');
-    //     }
-
-    //     // load relasi yang dibutuhkan
-    //     $order->load([
-    //         'items.menuItem',
-    //         'customer',
-    //         'outlet',
-    //         'payments',
-    //         'reserved',
-    //     ]);
-
-    //     // ⛔ TIDAK ADA PDF
-    //     return view('kasir.orders.print', compact('order'));
-    // }
-
-
-    // public function print(Order $order)
-    // {
-    //     if ($order->payment_status !== 'paid') {
-    //         abort(403, 'Order belum dibayar');
-    //     }
-
-    //     $order->load([
-    //         'items.menuItem',
-    //         'customer',
-    //         'reserved',
-    //         'outlet',
-    //         'payments',
-    //     ]);
-
-    //     // 58mm ≈ 164 pt
-    //     $paperWidth = 164;
-
-    //     // estimasi BARIS (lebih kecil & realistis)
-    //     $lines = 10;
-
-    //     foreach ($order->items as $item) {
-    //         $lines += ceil(strlen($item->menuItem->name) / 18) + 1;
-    //     }
-
-    //     if ($order->reserved) $lines += 2;
-
-    //     // 1 baris ≈ 14pt (thermal)
-    //     $paperHeight = $lines * 14;
-
-    //     $pdf = Pdf::loadView('kasir.orders.print', compact('order'))
-    //         ->setPaper([0, 0, $paperWidth, $paperHeight]);
-
-    //     return $pdf->stream('struk-'.$order->order_code.'.pdf');
-    // }
-
+    
 
 
     public function printIndex(Order $order)
@@ -1430,98 +903,81 @@ class OrderController extends Controller
 
 
 
-public function print(Order $order)
-{
-    // ===============================
-    // 1️⃣ VALIDASI
-    // ===============================
-    if ($order->payment_status !== 'paid') {
-        abort(403, 'Order belum dibayar');
+    public function print(Order $order)
+    {
+        // ===============================
+        // 1️⃣ VALIDASI
+        // ===============================
+        if ($order->payment_status !== 'paid') {
+            abort(403, 'Order belum dibayar');
+        }
+
+        // ===============================
+        // 2️⃣ LOAD RELATION
+        // ===============================
+        $order->load([
+            'items.menuItem',
+            'customer',
+            'table',
+            'promotion',
+            'reserved',
+            'outlet',
+            'payments',
+        ]);
+
+        // ===============================
+        // 3️⃣ LOGO → BASE64 (WAJIB)
+        // ===============================
+        $logoPath = public_path('assets/compiled/svg/logov1.png');
+
+        if (!file_exists($logoPath)) {
+            abort(500, 'File logo tidak ditemukan');
+        }
+
+        $logoBase64 = base64_encode(file_get_contents($logoPath));
+
+        // ===============================
+        // 4️⃣ HITUNG TINGGI KERTAS (AUTO)
+        // ===============================
+        $paperWidth = 164; // 58mm
+        $baseHeight = 220;
+        $lineHeight = 16;
+        $lines = 0;
+
+        foreach ($order->items as $item) {
+            $nameLines = ceil(strlen($item->menuItem->name) / 18);
+            $lines += max(1, $nameLines);
+        }
+
+        $lines += 12;
+        $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
+
+        // ===============================
+        // 5️⃣ GENERATE PDF
+        // ===============================
+        $pdf = Pdf::loadView(
+            'kasir.orders.print',
+            compact('order', 'logoBase64')
+        )->setPaper([0, 0, $paperWidth, $paperHeight]);
+
+        // ===============================
+        // 6️⃣ SIMPAN PDF KE PUBLIC STORAGE
+        // ===============================
+        $fileName = 'struk-' . $order->order_code . '.pdf';
+        $documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+        $storagePath  = $documentRoot . '/storage/struk';
+
+        if (!is_dir($storagePath)) {
+            mkdir($storagePath, 0755, true);
+        }
+
+        $fullPath = $storagePath . '/' . $fileName;
+        file_put_contents($fullPath, $pdf->output());
+
+        // ===============================
+        // 7️⃣ REDIRECT KE PDF
+        // ===============================
+        return redirect()->to(asset('storage/struk/' . $fileName));
     }
-
-    // ===============================
-    // 2️⃣ LOAD RELATION
-    // ===============================
-    $order->load([
-        'items.menuItem',
-        'customer',
-        'table',
-        'promotion',
-        'reserved',
-        'outlet',
-        'payments',
-    ]);
-
-    // ===============================
-    // 3️⃣ LOGO → BASE64 (WAJIB)
-    // ===============================
-    $logoPath = public_path('assets/compiled/svg/logov1.png');
-
-    if (!file_exists($logoPath)) {
-        abort(500, 'File logo tidak ditemukan');
-    }
-
-    $logoBase64 = base64_encode(file_get_contents($logoPath));
-
-    // ===============================
-    // 4️⃣ HITUNG TINGGI KERTAS (AUTO)
-    // ===============================
-    $paperWidth = 164; // 58mm
-    $baseHeight = 220;
-    $lineHeight = 16;
-    $lines = 0;
-
-    foreach ($order->items as $item) {
-        $nameLines = ceil(strlen($item->menuItem->name) / 18);
-        $lines += max(1, $nameLines);
-    }
-
-    $lines += 12;
-    $paperHeight = max(400, $baseHeight + ($lines * $lineHeight));
-
-    // ===============================
-    // 5️⃣ GENERATE PDF
-    // ===============================
-    $pdf = Pdf::loadView(
-        'kasir.orders.print',
-        compact('order', 'logoBase64')
-    )->setPaper([0, 0, $paperWidth, $paperHeight]);
-
-    // ===============================
-    // 6️⃣ SIMPAN PDF KE PUBLIC STORAGE
-    // ===============================
-    $fileName = 'struk-' . $order->order_code . '.pdf';
-    $documentRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
-    $storagePath  = $documentRoot . '/storage/struk';
-
-    if (!is_dir($storagePath)) {
-        mkdir($storagePath, 0755, true);
-    }
-
-    $fullPath = $storagePath . '/' . $fileName;
-    file_put_contents($fullPath, $pdf->output());
-
-    // ===============================
-    // 7️⃣ REDIRECT KE PDF
-    // ===============================
-    return redirect()->to(asset('storage/struk/' . $fileName));
-}
-
-// public function print(Order $order)
-// {
-//     if ($order->payment_status !== 'paid') {
-//         abort(403, 'Order belum dibayar');
-//     }
-
-//     $order->load([
-//         'items.menuItem',
-//         'customer',
-//         'payments',
-//         'reserved',
-//     ]);
-
-//     return view('kasir.orders.print', compact('order'));
-// }
-
     
 }

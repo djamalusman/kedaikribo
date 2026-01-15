@@ -85,7 +85,7 @@
                 </div>
                 <div class="col-md-4">
                     <strong>Jumlah Dibayar</strong><br>
-                    <strong>{{ rupiah($grandTotalPayable) }}</strong>
+                    {{ rupiah($grandTotalPayable) !== null ? rupiah($grandTotalPayable) : '-' }}
                 </div>
             </div>
 
